@@ -1,0 +1,19 @@
+fetch_analysis_task:
+  description: >
+    Fetch emails from the user's Gmail account with email id {email},
+    from email {fromemail} and add to email_queue table managed in
+    the sqlite database. mark the task as success even if no emails are fetched 
+  expected_output: >
+    number of emails fetched . 
+  agent: email_fetcher
+  async_execution: false
+
+fetch_and_process_email_task:
+  description: >
+    fetch the most recent emails from email_queue table
+    managed in the sqlite database as defined by the queue name
+    email_processor_expenseagent_queue and process the email 
+  expected_output: >
+    Processed email data from the database queue
+  agent: email_fetcher
+  async_execution: false

@@ -1,0 +1,33 @@
+[project]
+name = "email_analyzer"
+venv = "v2" 
+version = "0.1.0"
+description = "email-analyzer using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.13"
+
+dependencies = [
+    "crewai",
+    "crewai[tools]",
+    "google-api-python-client>=2.80.0",
+    "google-auth>=2.16.0",
+    "google-auth-httplib2>=0.1.0",
+    "google-auth-oauthlib>=1.0.0",
+    "langchain",
+    "langchain_community",
+]
+
+
+[project.scripts]
+email_analyzer = "email_analyzer.main:run"
+run_crew = "email_analyzer.main:run"
+train = "email_analyzer.main:train"
+replay = "email_analyzer.main:replay"
+test = "email_analyzer.main:test"
+
+[build-system]
+requires = ["hatchling", "setuptools"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
