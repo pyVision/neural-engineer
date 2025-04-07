@@ -109,28 +109,7 @@ begin
 end;
 $$;
 
--- Create a function to cleanup old messages
-create or replace function public.cleanup_old_messages(
-    queue_name text,
-    hours_old integer
-)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-    cutoff_time timestamp;
-begin
-    cutoff_time := now() - (hours_old || ' hours')::interval;
-    
-    -- Delete messages older than the cutoff time
-    -- Note: We use pgmq.delete to ensure proper cleanup
-    delete from pgmq.message_queue
-    where queue_name = $1
-    and enqueued_at < cutoff_time;
-end;
-$$;
+
 
 -- Create RLS policies for queue access
 create policy "Enable all access for authenticated users"

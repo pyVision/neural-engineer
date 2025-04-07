@@ -12,6 +12,8 @@ class SupabaseQueue:
             os.getenv("SUPABASE_KEY")
         )
 
+
+
     def process_batch(self, queue_name: str, batch_size: int = 10):
        messages = []
        for _ in range(batch_size):
