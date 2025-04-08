@@ -5,7 +5,7 @@ import os
 from crewai import Agent, Task
 #from langchain.tools import tool
 from langchain_core.tools import BaseTool, StructuredTool, Tool
-from email_analyzer.tools.gmail_utils import fetch_emails,push_unique_emails_to_queues,fetch_and_process_email, remove_email_from_queue
+from email_analyzer.tools.gmail_utils_supabase import save_processed_email,fetch_emails,push_unique_emails_to_queues,fetch_and_process_email, remove_email_from_queue
 from textwrap import dedent
 from langchain_community.chat_models import ChatOpenAI
 from bs4 import BeautifulSoup
@@ -43,10 +43,15 @@ class EmailTools:
         try:
             while True:
                 emails,msg_id = fetch_and_process_email("email_processor_expenseagent_queue")
+                
+                #print(msg_id)
+                #continue
                 if emails!=None and len(emails)>0:
+                    email_id=emails["email_id"]
                     print(f"processing emails {emails['subject']}")
                     subject=emails['subject']
                     content=emails['content']
+                    date1=emails['date']
 
                     agent2 = Agent(
                         role="Expense Manager Agent",
@@ -76,14 +81,18 @@ class EmailTools:
                             - Recipient: {emails['receiver']}
                             - Subject: "{subject}"
                             - Content: "{content}"
+                            - Email Date : "{date1}"
+                            - Message ID: {email_id}
                             
                             Format your response as a JSON object with:
                             {{
+                                "email_id": message ID,
+                                "vendor" : "ola" or "uber",
                                 "subject": subject line,
-                                "date": trip date (YYYY-MM-DD format),
+                                "date": expense date (YYYY-MM-DD format),
                                 "payment_mode": payment method used,
                                 "expense_amount": amount in currency (e.g. "₹123.45"),
-                                "trip_details": brief description of pickup/dropoff,
+                                "expense_details": brief description of pickup/dropoff,
                                 "email_date": email received date,
                                 "email_recipient": recipient address,
                                 "email_sender": sender address
@@ -105,24 +114,36 @@ class EmailTools:
                     summary = summary.strip()
                     if summary.endswith('```'):
                         summary = summary[:-3].strip()
+                    if summary.startswith('```json'):
+                        summary = summary[7:].strip()
 
                     # Parse the JSON string into a Python object
                     try:
                         json_summary = json.loads(summary)
                         summaries.append(json_summary)
-                        remove_email_from_queue("email_processor_expenseagent_queue", msg_id)
-
+                        
+                        #remove_email_from_queue("email_processor_expenseagent_queue", msg_id)
+                        print("processing summary is ",summary)
+                        
 
                     except json.JSONDecodeError as e:
                         print(f"Error parsing JSON summary: {e}")
                         print(f"Raw summary: {summary}")
-
-                    print("processing summary is ",summary)
+                        break;
+                    # processed_count += 1
+                    # if processed_count == 2:
+                    #     break;
+                        
                 else:
+                    
                     print("No more emails to process")
-                    with open("processed_emails.json", "w") as file:
+                    break;
+
+            with open("processed_emails.json", "w") as file:
                         json.dump(summaries, file, indent=4)
-                    break
+            save_processed_email(summaries)
+            
+
             return True
         except Exception as e:
             import traceback
