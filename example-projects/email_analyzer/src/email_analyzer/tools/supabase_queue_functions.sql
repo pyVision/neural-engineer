@@ -1,5 +1,21 @@
--- Enable the pg_message_queue extension
-create extension if not exists pg_message_queue;
+
+
+-- emails table
+create table if not exists emails  (
+    msg_id text primary key,
+    email_data text
+);
+
+
+
+-- checkpoints table
+create table if not exists checkpoints (
+    key text primary key,
+    value text
+);
+
+-- -- Enable the pg_message_queue extension
+-- create extension if not exists pg_message_queue;
 
 -- Create a function to enqueue messages
 create or replace function public.enqueue(
@@ -20,79 +36,89 @@ begin
 end;
 $$;
 
+
+CREATE TYPE my_tuple AS (
+    msg_id bigint,
+    data jsonb
+);
+
+drop function dequeue;
 -- Create a function to dequeue messages
 create or replace function public.dequeue(
-    queue_name text
+    queue_name text,
+    msg_id bigint
 )
-returns json
+RETURNS my_tuple
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
     message_record record;
-    result jsonb;
+    --result jsonb;
+    result my_tuple;
 begin
     -- Try to get a message from the queue
-    select * into message_record 
-    from pgmq.read(queue_name, 1) 
-    limit 1;
-    
-    if message_record is null then
-        return null;
+
+    result.msg_id := message_record.msg_id;
+    result.data :=message_record.message;
+    if msg_id is null then
+     select * into message_record 
+     from pgmq.read(queue_name, 30,1) 
+     limit 1;
+     msg_id := message_record.msg_id;
     end if;
+
+    
     
     -- Delete the message after processing
-    perform pgmq.delete(queue_name, ARRAY[message_record.msg_id]);
+    perform pgmq.delete(queue_name, ARRAY[msg_id]);
     
-    -- Return the message payload
-    return message_record.message::jsonb;
+    result.msg_id := msg_id;
+    result.data :=null;
+    
+    RETURN result;
 end;
 $$;
+
+drop function peek_queue;
+
+
 
 -- Create a function to peek at messages without dequeuing
 create or replace function public.peek_queue(
     queue_name text
+
 )
-returns jsonb
+RETURNS my_tuple
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
+    result my_tuple;
     message_record record;
 begin
+
+    result.msg_id := null;
+    result.data :=null;
+
     -- Get a message without removing it
     select * into message_record 
-    from pgmq.read(queue_name, 1) 
-    limit 1;
+    from pgmq.read(queue_name,30,1);
+    -- limit 1;
     
     if message_record is null then
-        return null;
+      return result;
     end if;
+    result.msg_id := message_record.msg_id;
+    result.data :=message_record.message;
     
-    return message_record.message::jsonb;
+    RETURN result;
 end;
 $$;
 
--- Create a function to get queue length
-create or replace function public.get_queue_length(
-    queue_name text
-)
-returns bigint
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-    queue_size bigint;
-begin
-    select count(*) into queue_size
-    from pgmq.read(queue_name, null);
-    
-    return queue_size;
-end;
-$$;
+
 
 -- Create a function to purge a queue
 create or replace function public.purge_queue(
@@ -104,12 +130,10 @@ security definer
 set search_path = public
 as $$
 begin
-    perform pgmq.delete_queue(queue_name);
-    perform pgmq.create_queue(queue_name);
+    perform pgmq.purge_queue(queue_name);
+    --perform pgmq.create_queue(queue_name);
 end;
 $$;
-
-
 
 -- Create RLS policies for queue access
 create policy "Enable all access for authenticated users"

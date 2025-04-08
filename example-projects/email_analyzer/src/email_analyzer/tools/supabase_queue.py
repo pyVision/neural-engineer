@@ -127,8 +127,8 @@ class SupabaseQueue:
                 print("There are failed messages to process")
             ```
         """
-        main_queue = self.peek(queue_name)
-        dlq = self.peek(f"{queue_name}_dlq")
+        msg_id,main_queue = self.peek(queue_name)
+        dmsg_id,dlq = self.peek(f"{queue_name}_dlq")
         return {
             'has_messages': main_queue is not None,
             'has_failed_messages': dlq is not None
@@ -197,7 +197,7 @@ class SupabaseQueue:
             print(f"Error enqueueing message: {e}")
             raise
 
-    def dequeue(self, queue_name: str) -> Optional[Dict[str, Any]]:
+    def dequeue(self, queue_name: str,msg_id:str=None) -> Optional[Dict[str, Any]]:
         """
         Remove and return the next message from the queue.
         
@@ -224,14 +224,17 @@ class SupabaseQueue:
             ```
         """
         try:
-            result = self.supabase.rpc('dequeue', {'queue_name': queue_name}).execute()
-            print(f"dequeue result is {result}")
+            result = self.supabase.rpc('dequeue', {'msg_id':msg_id,'queue_name': queue_name}).execute()
+            #
+            #print(f"dequeue result is {result}")
             if result.data:
-                return json.loads(result.data)
-            return None
+                j=result.data
+                #print(j)
+                return j['msg_id'],None
+            return None,None
         except Exception as e:
             print(f"Error dequeuing message: {e}")
-            return None
+            return None,None
 
     def peek(self, queue_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -259,12 +262,18 @@ class SupabaseQueue:
         """
         try:
             result = self.supabase.rpc('peek_queue', {'queue_name': queue_name}).execute()
+            #print(result)
             if result.data:
-                return json.loads(result.data)
-            return None
+                j=result.data
+                if j['data']:
+                #print(j)
+                    return j['msg_id'],json.loads(j['data'])
+            return None,None
         except Exception as e:
-            print(f"Error peeking queue: {e}")
-            return None
+            import traceback
+            traceback.print_exc()
+            print(f"Error peeking queue: {e}",queue_name)
+            return None,None
 
     def purge_queue(self, queue_name: str) -> None:
         """
