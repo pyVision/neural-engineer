@@ -5,7 +5,7 @@ import os
 from crewai import Agent, Task
 #from langchain.tools import tool
 from langchain_core.tools import BaseTool, StructuredTool, Tool
-from email_analyzer.tools.gmail_utils_supabase import save_processed_email,fetch_emails,push_unique_emails_to_queues,fetch_and_process_email, remove_email_from_queue
+from email_analyzer.tools.gmail_utils_supabase import get_cost_analytics,save_processed_email,fetch_emails,push_unique_emails_to_queues,fetch_and_process_email, remove_email_from_queue
 from textwrap import dedent
 from langchain_community.chat_models import ChatOpenAI
 from bs4 import BeautifulSoup
@@ -26,9 +26,39 @@ class TOutput(BaseModel):
 
 class EmailTools:
 
+
+    @tool("Get cost analytics")
+    def get_email_cost_analytics() -> dict:
+        """Retrieves and prints aggregate cost analytics for processed emails within a date range.
+
+        Args:
+            start_date (str): Start date in YYYY-MM-DD format
+            end_date (str): End date in YYYY-MM-DD format
+        Returns:
+            dict: Analytics data including total expenses, vendor breakdown, and payment modes
+        """
+        try:
+            analytics = get_cost_analytics()
+            print("=== Cost Analytics ===",analytics)
+            #print(f"Period: {start_date} to {end_date}")
+            print(f"Total Expenses: {analytics['total_expenses']}")
+            print("\nVendor Breakdown:")
+            for vendor, amount in analytics['vendor_expenses'].items():
+                print(f"- {vendor}: {amount}")
+            print("\nPayment Modes:")
+            for mode, count in analytics['payment_modes'].items():
+                print(f"- {mode}: {count} transactions")
+            return analytics
+        except Exception as e:
+            
+            print(f"Error getting analytics: {str(e)}")
+            return {}
+        
     # Tool to process one email per agent
     @tool("Process emails from the expense agent queue")
     def fetch_and_process_email(queue:str)->bool:
+
+
         """Processes all emails from the specified queue until queue is empty
 
         Args:
@@ -44,11 +74,12 @@ class EmailTools:
             while True:
                 emails,msg_id = fetch_and_process_email("email_processor_expenseagent_queue")
                 
+                
                 #print(msg_id)
                 #continue
                 if emails!=None and len(emails)>0:
                     email_id=emails["email_id"]
-                    print(f"processing emails {emails['subject']}")
+                    #print(f"processing emails {emails['subject']} --- {email_id}")
                     subject=emails['subject']
                     content=emails['content']
                     date1=emails['date']
@@ -122,9 +153,9 @@ class EmailTools:
                         json_summary = json.loads(summary)
                         summaries.append(json_summary)
                         
-                        #remove_email_from_queue("email_processor_expenseagent_queue", msg_id)
+                        remove_email_from_queue("email_processor_expenseagent_queue", msg_id)
                         print("processing summary is ",summary)
-                        
+                        save_processed_email([json_summary])
 
                     except json.JSONDecodeError as e:
                         print(f"Error parsing JSON summary: {e}")
@@ -139,9 +170,9 @@ class EmailTools:
                     print("No more emails to process")
                     break;
 
-            with open("processed_emails.json", "w") as file:
-                        json.dump(summaries, file, indent=4)
-            save_processed_email(summaries)
+            # with open("processed_emails.json", "w") as file:
+            #             json.dump(summaries, file, indent=4)
+            
             
 
             return True
@@ -167,12 +198,12 @@ class EmailTools:
 
         try:
             count=10
-            start_date="2025-03-30"
+            start_date="2025-04-01"
             print("calling fetch_and_queue_emails ",count,email)
             next_page_token=None
             fcount=0
             while True:
-                emails,next_page_token = fetch_emails(email=email,filter=from_email,start_date=start_date,count=count,page_token=next_page_token)
+                emails,next_page_token = fetch_emails(email=email,filter1=from_email,start_date=start_date,count=count,page_token=next_page_token)
                 if emails!=None and len(emails)>0:
                     print("pushing the emails to queue ",len(emails))
                     fcount=fcount+len(emails)

@@ -262,11 +262,10 @@ class SupabaseQueue:
         """
         try:
             result = self.supabase.rpc('peek_queue', {'queue_name': queue_name}).execute()
-            #print(result)
+            #print("MM",j['msg_id'])
             if result.data:
                 j=result.data
                 if j['data']:
-                #print(j)
                     return j['msg_id'],json.loads(j['data'])
             return None,None
         except Exception as e:

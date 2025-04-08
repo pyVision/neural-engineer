@@ -37,8 +37,8 @@ def remove_email_from_queue(queue_name, msg_id):
     """Removes an email from the queue."""
     try:
         # Get the message from queue
-        message = queue_manager.dequeue(queue_name)
-        if message and message.get('msg_id') == msg_id:
+        msg_id1,m = queue_manager.dequeue(queue_name,msg_id)
+        if msg_id1:
             return True
         return False
     except Exception as e:
@@ -53,7 +53,8 @@ def fetch_and_process_email(queue_name):
         if not message:
             return None, None
         d1=message["email_data"]
-        d1["email_id"]=message.get("msg_id")
+        #d1["email_id"]=message.get("email_id")
+
         return d1, msg_id
         
     except Exception as e:
@@ -75,6 +76,35 @@ def save_processed_email(emails):
         print(f"Error saving processed email: {e}")
         return False
 
+def get_cost_analytics():
+    """Computes monthly cost analytics by vendor from processed emails."""
+    try:
+        
+        # Query to aggregate costs by month and vendor
+        query = supabase.rpc(
+            'get_monthly_costs',
+            {})
+        
+        result = query.execute()
+        
+        print("result is ",result)
+        # Convert to the expected analytics format
+        analytics = {}
+        for row in result.data:
+            month_key = row['month'][:7]  # Get YYYY-MM format
+            vendor = row['vendor']
+            cost = float(row['total_cost'])
+            
+            if month_key not in analytics:
+                analytics[month_key] = {}
+                analytics[month_key][vendor] = cost
+        return analytics
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error computing analytics: {e}")
+        return None
+
     
 
 def push_unique_emails_to_queues(emails, agent_queues):
@@ -84,7 +114,7 @@ def push_unique_emails_to_queues(emails, agent_queues):
     try:
         for email in emails:
             msg_id = email['id']
-            print("checking emails ", msg_id)
+            #print("checking emails ", msg_id)
             
             # Check for duplicate messages
             result = supabase.table('emails').select('msg_id').eq('msg_id', msg_id).execute()
@@ -111,7 +141,7 @@ def push_unique_emails_to_queues(emails, agent_queues):
         print(f"Error pushing emails to queues: {e}")
         return f"Error: {str(e)}"
 
-def fetch_emails(email, filter, start_date, count, page_token=None):
+def fetch_emails(email, filter1, start_date, count, page_token=None):
     """Fetches and processes emails from Gmail inbox with caching."""
     try:
         emails = []
@@ -136,15 +166,28 @@ def fetch_emails(email, filter, start_date, count, page_token=None):
         if start_date:
             pstart_date = start_date
 
+        labels = gmail.list_labels()
+        #print(labels)
+        llist=[]
+        for l1 in filter1:
+            f=list(filter(lambda x: x.name == l1, labels))
+            if f:
+                #print("filter is ",f,l1)
+                work_label = list(filter(lambda x: x.name == l1, labels))[0]
+                llist.append([work_label])
+
+
         query_params_1 = {
             "after": pstart_date,
-            "sender": filter,
+            #"sender": filter,
+            "labels": llist  # Add labels you want to filter by
         }        
         
         # Fetch messages from Gmail
         query1 = construct_query(query_params_1)
         messages = gmail.get_messages(query=query1, attachments="ignore", user_id=email)
 
+        count=0
         # Process each message
         for message in messages:
             msg_id = message.id
@@ -184,14 +227,16 @@ def fetch_emails(email, filter, start_date, count, page_token=None):
                 email_json = json.dumps(mf)
                 supabase.table('emails').insert({'msg_id': msg_id, 'email_data': email_json}).execute()
                 emails.append(mf)
-            else:  # If in cache, use cached version
-                mf = json.loads(result.data[0]['email_data'])
-                emails.append(mf)
+                
+            #else:  # If in cache, use cached version
+                #mf = json.loads(result.data[0]['email_data'])
+                #emails.append(mf)
 
-        # Update checkpoint with current date
-        current_date = datetime.now().strftime('%Y/%m/%d')
-        supabase.table('checkpoints').upsert({'key': 'last_fetch_checkpoint', 'value': current_date}).execute()
-        
+        if emails:
+            # Update checkpoint with current date
+            current_date = datetime.now().strftime('%Y/%m/%d')
+            supabase.table('checkpoints').upsert({'key': 'last_fetch_checkpoint', 'value': current_date}).execute()
+            
         return emails, None
 
     except Exception as e:
