@@ -1,0 +1,2 @@
+{"request": {"contents": [{"role": "user", "parts": [{"text": "What is machine learning?"}]}],"generation_config": {"temperature": 0.7, "maxOutputTokens": 50, "topP": 0.8, "topK": 40}}}
+{"request": {"contents": [{"role": "user", "parts": [{"text": "Explain neural networks"}]}]}}
