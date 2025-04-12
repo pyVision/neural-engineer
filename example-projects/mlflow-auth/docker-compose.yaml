@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+    mlflow:
+        image: ghcr.io/mlflow/mlflow:v2.15.1
+        container_name: mlflow
+        expose:
+            - "7001"
+        ports:
+            - "7001:7001"
+        environment:
+            MLFLOW_BACKEND_STORE_URI: "./mlflow-db/mlflow.db"
+            MLFLOW_AUTH_CONFIG_PATH: "/var/lib/mlflow/mlflow-auth/basic-auth.ini"
+            # Add artifact store location
+            MLFLOW_ARTIFACT_ROOT: "/var/lib/mlflow/mlflow-artifacts"
+        volumes:
+            - ./mlflow-auth:/var/lib/mlflow/mlflow-auth
+            - ./mlflow-db:/var/lib/mlflow/mlflow-db
+            # Add volume for artifacts
+            - ./mlflow-artifacts:/var/lib/mlflow/mlflow-artifacts
+        command: mlflow server --host 0.0.0.0 --port 7001 --app-name=basic-auth
