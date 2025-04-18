@@ -252,13 +252,8 @@ ticker_obj = yf.Ticker(ticker, session=session)
 ticker_obj.get_balance_sheet()
 
 ```
+### Example Code and Usage
 
-
-
-
-
-### Command Line Interface
-The library includes a CLI with multiple modes:
 ```bash
 python main.py <mode> [arguments]
 ```
@@ -290,83 +285,31 @@ python main.py 4 MSFT
 # Rate-limited queries
 python main.py 5 GOOGL 2 1
 
+#Indian Stocks
+python main.py 6 INFY.NS
+
 # Multiple stocks analysis
 python main.py 7 AAPL,MSFT,GOOGL
+
+#proxuy
+python main.py 8 INFY.NS 170.39.119.109:1100
 ```
+# Conclusion
 
-### Balance Sheet Analysis
-```python
-def get_balance_sheet(ticker, use_cache=True, rate_limit=True, max_requests=2, period=1, proxy=None):
-    session = create_session(
-        cache_name='balance_sheet_cache',
-        expire_after=3600,
-        rate_limit=rate_limit,
-        max_requests=max_requests,
-        period=period,
-        proxy=proxy
-    )
-    ticker_obj = yf.Ticker(ticker, session=session)
-    return ticker_obj.get_balance_sheet()
-```
+YFinance provides a robust and flexible way to access financial market data from Yahoo Finance. With the techniques demonstrated in this documentation, you can efficiently retrieve, analyze, and cache stock data for both US and Indian markets while respecting rate limits and optimizing performance.
 
-## Caching and Rate Limiting in yfinance
+This library is particularly valuable for:
+- Financial analysis and research
+- Algorithmic trading development
+- Portfolio tracking applications
+- Market trend visualization
 
-YFinance implements built-in caching to improve performance and respect rate limits. Here's how to work with these features:
+By implementing proper caching and rate limiting as shown in the examples, you can build reliable financial applications that maintain consistent access to market data without overwhelming Yahoo Finance's servers.
 
-### Caching
+## Full Code Repository
 
-By default, yfinance caches data temporarily to reduce API calls:
+The complete code for all examples in this documentation is available on GitHub:
+[https://github.com/pyVision/neural-engineer/tree/main/example-projects/ytfinancee](https://github.com/pyVision/neural-engineer/tree/main/example-projects/ytfinance)
 
-```python
-import yfinance as yf
+Feel free to clone the repository, submit issues, or contribute improvements to make this resource even more valuable for the financial data community.
 
-# Default cache behavior
-msft = yf.Ticker("MSFT")
-
-# First call fetches from API
-data1 = msft.history(period="1d")  
-# Second call uses cache
-data2 = msft.history(period="1d")  
-
-# Clear cache if needed
-msft.cache_clear()
-
-# Disable caching
-msft = yf.Ticker("MSFT", session_config={'cache': False})
-```
-
-### Rate Limiting
-
-YFinance automatically handles rate limiting, but you can implement additional controls:
-
-```python
-import time
-from ratelimit import limits, sleep_and_retry
-
-# Define rate limit (e.g., 2 calls per second)
-@sleep_and_retry
-@limits(calls=2, period=1)
-def get_stock_data(symbol):
-    ticker = yf.Ticker(symbol)
-    return ticker.history(period="1d")
-
-# Usage with rate limiting
-symbols = ["AAPL", "MSFT", "GOOG"]
-for symbol in symbols:
-    data = get_stock_data(symbol)
-    time.sleep(0.5)  # Additional delay between requests
-```
-
-Note: Excessive requests may still lead to temporary IP blocks from Yahoo Finance.
-
-
-
-## Common Issues and Best Practices
-
-1. Always add `.NS` for NSE stocks and `.BO` for BSE stocks
-2. Use try-except blocks as Yahoo Finance API might occasionally fail
-3. Be mindful of rate limits
-4. Historical data might have gaps during market holidays
-5. Some data points might not be available for all stocks
-
-Note: Data availability and accuracy depends on Yahoo Finance's API. It's recommended to verify critical data points from official sources.
