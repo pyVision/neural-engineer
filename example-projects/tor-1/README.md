@@ -213,7 +213,7 @@ Note: Use this responsibly and in compliance with applicable laws and service te
 
 ## Source Code
 The complete source code for this project is available at:
-- GitHub Repository: [github.com/pyVision/neural-engineer/tor-ip-rotation](https://github.com/pyVision/neural-engineer/example-projects/tor-ip-rotation)
+- GitHub Repository: [github.com/pyVision/neural-engineer/tor-ip-rotation](https://github.com/pyVision/neural-engineer/tree/main/example-projects/tor-1
 - Implementation Files: 
     - `/app/app.py` - Main Python script for IP rotation
     - `/app/start.sh` - Container startup script
