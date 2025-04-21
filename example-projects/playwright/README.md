@@ -13,7 +13,7 @@ Playwright is a powerful automation framework for web testing and web scraping t
 ## Source Code
 
 All example code for this project is available in the following GitHub repository:
-- Repository: [neural-engineer/example-projects](https://github.com/pyVision/neural-engineer/example-projects)
+- Repository: [neural-engineer/example-projects](https://github.com/pyVision/neural-engineer/tree/main/example-projects)
 - Path: `/playwright`
 
 ## Quick Start Guide
