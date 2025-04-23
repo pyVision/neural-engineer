@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "domain-check"
+version = "0.1.0"
+description = "A1"
+authors = ["Donatas Rasiukevicius <donatas@fly.io>"]
+readme = "README.md"
+packages = [{include = "domain_check", from = "src"}]
+
+
+[tool.poetry.dependencies]
+python="^3.11"
+fastapi=">=0.108.0,<0.109.0"
+uvicorn=">=0.34.2,<0.35.0"
+python-whois=">=0.9.5,<0.10.0"
+jinja2=">=3.1.6,<4.0.0"
+python-multipart=">=0.0.20,<0.0.21"
+
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
