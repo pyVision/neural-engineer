@@ -174,11 +174,38 @@ Alternatively you can create a Docker image by running the command
 docker build -t domain-checker .
 ```
 
-You can run the container with:
+You can run the container locally with:
 ```bash
 docker run -p 8000:8000 domain-checker
 ```
 
-
 Visit http://localhost:8000 to use the domain checker.
 
+## Upcoming Features
+
+### SSL Certificate Monitoring
+We're implementing SSL certificate validation to check:
+- Expiration dates for SSL certificates
+- Certificate validity and trust chain
+- Cipher strength and security protocols
+
+
+### Email Security Verification
+The tool will also check for proper email security configuration:
+- SPF (Sender Policy Framework) record validation
+- DKIM (DomainKeys Identified Mail) configuration
+- DMARC (Domain-based Message Authentication) policy checking
+- BIMI (Brand Indicators for Message Identification) support
+
+### Domain Health Score
+We'll introduce a comprehensive domain health scoring system that evaluates:
+- Registration status and expiration timeline
+- DNS configuration completeness
+- Security best practices implementation
+- Performance metrics
+
+## Conclusion
+
+The Domain Expiry Checker provides essential monitoring capabilities for organizations managing multiple domains. By expanding beyond simple expiration checks to include security verification, email configuration validation, and comprehensive health assessments, this tool helps ensure domains remain operational, secure, and properly configured.
+
+Future development will focus on scalability improvements, API integrations with popular domain registrars, and customizable alerting mechanisms to provide advance notification before critical expirations occur.
