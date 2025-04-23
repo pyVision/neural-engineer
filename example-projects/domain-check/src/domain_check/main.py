@@ -11,6 +11,10 @@ from pathlib import Path
 
 
 from .domain_check import check_domains  
+from .ssl_check import SSLChecker
+
+
+ssl_checker=SSLChecker()
 
 # Keep the rest of your imports and functions
 import ssl
@@ -49,17 +53,18 @@ class DomainInfo:
 # Keep all your existing functions (check_domain_expiry, etc.)
 # ... (all your existing functions remain the same)
 
-# Create new function for the FastAPI routes
+# Create new functions for the FastAPI routes
 @app.get("/", response_class=HTMLResponse)
 async def get_form(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "domains": "", 
         "threshold": 30,
-        "results": None
+        "results": None,
+        "active_tab": "domain"
     })
 
-@app.post("/", response_class=HTMLResponse)
+@app.post("/check-domains", response_class=HTMLResponse)
 async def check_domains_form(request: Request, domains: str = Form(...), threshold: int = Form(30)):
     # Parse domains from input (support both comma-separated and newline-separated)
     domains_list = []
@@ -69,15 +74,41 @@ async def check_domains_form(request: Request, domains: str = Form(...), thresho
             domains_list.append(domain)
     
     # Process domains and collect results
-    results = []
-    results=check_domains(domains_list,threshold)
+    results = check_domains(domains_list, threshold)
 
     # Return the template with results
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "domains": domains, 
         "threshold": threshold,
-        "results": results
+        "results": results,
+        "active_tab": "domain"
+    })
+
+@app.post("/check-ssl", response_class=HTMLResponse)
+async def check_ssl_form(request: Request, domains: str = Form(...), threshold: int = Form(30)):
+    # Parse domains from input (support both comma-separated and newline-separated)
+    domains_list = []
+    for domain in re.split(r'[,\n]', domains):
+        domain = domain.strip()
+        if domain:
+            domains_list.append(domain)
+    
+    ssl_results=[]
+    # Process domains and collect SSL certificate results
+    for d in domains_list:
+        ss = ssl_checker.check_domain_certificates(d,threshold)
+
+ 
+        
+        ssl_results.extend(ss)
+    # Return the template with results
+    return templates.TemplateResponse("index.html", {
+        "request": request, 
+        "domains": domains, 
+        "threshold": threshold,
+        "ssl_results": ssl_results,
+        "active_tab": "ssl"
     })
 
 if __name__ == "__main__":

@@ -1,146 +1,53 @@
-# Domain Expiry Checker
+# SSL Certificate Expiry Checker
 
-In this blog we will look at developing a tool that checks domain expiration dates and provides a simple web interface for users to view the results. This utility helps system administrators, website owners, and IT teams monitor their domain portfolios to prevent unexpected expirations.
+In this article we will look at adding more capabilities to domain expiry tool we had looked at in the previous article . We will be looking at augmenting tool with capabilities to check certificate validity across domains and their associated subdomains automatically . 
 
-You can try out the Domain checker tool at link https://domain-check-long-river-5458.fly.dev/
+You can try out the tool at https://domain-check-long-river-5458.fly.dev/
 
-
-## Features
-- Bulk domain checking 
-- DNS record validation for domain existence
-- Rate limiting to prevent abuse
+ You can find the link to the previous blog article at  https://medium.com/neural-engineer/domain-expiry-checker-752ecdd1d0b5
 
 
-### Implementation
+### SSL Certificate Check
 
-The tool will be built using [specific technologies - e.g., Python/Flask, Node.js/Express] for the backend processing and [frontend technologies - e.g., React, Vue] for the user interface. We'll integrate with domain WHOIS APIs to retrieve accurate expiration information.
+The SSL certificate validation component :
+- Performs subdomain discovery and validation
+- It extract Certificate expiration dates and issuer details for domains and subdomains
 
-### Code Walkthrough
 
-### Repository Structure
-```
-domain-check/
-├── main.py                 # FastAPI application
-├── src/
-│   └── domain_check/
-│       └── domain_check.py # Core domain checking functionality
-├── templates/
-│   └── index.html         # Frontend template
-├── requirements.txt       # Project dependencies
-└── README.md             # Documentation
-```
+### Code WalkThough
 
-#### 1. Domain Validation (domain_check.py)
-The core domain validation logic uses multiple layers of verification:
+The SSL Certificate checker is implemented in the `ssl_check.py` module, which contains the `SSLChecker` class with several key functions:
 
-```python
-def is_valid_domain(domain: str) -> bool:
-    """
-    Validate a domain through format checking and DNS record lookup.
-    
-    Args:
-        domain: Domain name to validate
-        
-    Returns:
-        bool: True if domain format is valid and has DNS records
-    """
-    # Remove protocol and path if present
-    domain = re.sub(r'^.*://', '', domain)
-    domain = domain.split('/')[0].lower()
-    
-    # Check domain format using regex
-    domain_pattern = re.compile(
-        r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$'
-    )
-    
-    if not domain_pattern.match(domain):
-        return False
-    
-    # Try DNS resolution with multiple record types
-    try:
-        resolver = dns.resolver.Resolver()
-        for record_type in ['A', 'AAAA', 'MX', 'NS']:
-            try:
-                answers = resolver.resolve(domain, record_type)
-                if answers:
-                    return True
-            except Exception:
-                continue
-        return False
-    except Exception:
-        return False
-```
 
-This function implements a two-step validation:
-1. Format validation using regex pattern matching
-2. DNS record verification trying multiple record types (A, AAAA, MX, NS)
+####  `get_subdomains(self, domain)`
+- Discovers subdomains associated with a root domain using multiple methods:
+  - DNS record lookups (A, AAAA, CNAME records)
+  - Checking common subdomain prefixes (www, mail, blog, etc.)
+- Returns a list of discovered subdomains for comprehensive scanning
 
-#### 2. Domain Expiry Checking (main.py)
-The expiry checking function handles various edge cases and domain types:
+####  `get_certificate_info(self, hostname, port=443)`
+- Establishes a secure connection to retrieve SSL certificate information
+- Handles IDN (Internationalized Domain Names) encoding
+- Extracts detailed certificate data including:
+  - Issuer organization
+  - Certificate subject
+  - Valid dates (not before, not after)
+  - Expiration information (days remaining)
+  - Serial number and version
+- Returns a structured dictionary with all certificate details or None on error
 
-```python
-def check_domain_expiry(domain: str) -> dict:
-    """
-    Check domain expiry and return relevant information.
-    
-    Returns:
-        dict: Domain information including expiry date, days left, 
-              registrar, owner and status
-    """
-    try:
-        if not is_valid_domain(domain):
-            return {
-                "domain": domain,
-                "expiry_date": "Invalid domain",
-                "days_left": -1,
-                "registrar": "N/A",
-                "owner": "N/A"
-            }
-            
-        w = whois.whois(domain)
-        expiry_date = w.expiration_date
-        
-        # Handle multiple expiry dates (some registrars return a list)
-        if isinstance(expiry_date, list):
-            expiry_date = expiry_date[0]
-            
-        # Special handling for .ai domains
-        if expiry_date is None and domain.endswith('.ai'):
-            return {
-                "domain": domain,
-                "expiry_date": "Not available for .ai domains",
-                "days_left": -1,
-                "registrar": w.registrar or "Unknown",
-                "owner": w.name or "Unknown"
-            }
-```
+####  `check_domain_certificates(self, domain, notification_threshold_days=30)`
+- Orchestrates the complete SSL validation process:
+  1. Retrieves all subdomains for the given domain
+  2. For each subdomain, fetches SSL certificate information
+  3. Analyzes expiration dates against the notification threshold
+  4. Adds status information (Valid or Expiring soon)
+- Returns a consolidated list of certificate information for all domains and subdomains
 
-Key features:
-- Handles multiple expiry date formats
-- Special case for .ai domains that don't return expiry dates by python-whois code
-- Graceful error handling with informative messages
+This implementation uses Python's SSL libraries (`ssl`, `OpenSSL`) for certificate validation and `dnspython` for DNS lookups. The code handles various error conditions gracefully, with comprehensive logging for troubleshooting.
 
-#### 3. Rate Limiting Implementation
-The application implements IP-based rate limiting to prevent abuse:
+The modular design allows for easy integration into web applications or automation scripts, making it versatile for different deployment scenarios.
 
-```python
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware to implement rate limiting based on client IP."""
-    async def dispatch(self, request: Request, call_next):
-        client_ip = request.client.host
-        current_time = time.time()
-        
-        # Reset counter if more than 1 second has passed
-        if current_time - rate_limit_dict[client_ip]["last_request"] >= 1:
-            rate_limit_dict[client_ip]["requests"] = 0
-            rate_limit_dict[client_ip]["last_request"] = current_time
-        
-        if rate_limit_dict[client_ip]["requests"] >= RATE_LIMIT:
-            return HTMLResponse(
-                content="Rate limit exceeded. Please try again in a moment.",
-                status_code=429
-            )
-```
 
 ### Source Code
 The complete source code for this project is available on GitHub:
@@ -179,33 +86,17 @@ You can run the container locally with:
 docker run -p 8000:8000 domain-checker
 ```
 
-Visit http://localhost:8000 to use the domain checker.
+Visit http://localhost:8000 to use the SSL certificate checker checker.
 
 ## Upcoming Features
 
-### SSL Certificate Monitoring
-We're implementing SSL certificate validation to check:
-- Expiration dates for SSL certificates
-- Certificate validity and trust chain
-- Cipher strength and security protocols
+- Email Security Verification
+- Domain Health Score
+- Advance Notifications 
 
-
-### Email Security Verification
-The tool will also check for proper email security configuration:
-- SPF (Sender Policy Framework) record validation
-- DKIM (DomainKeys Identified Mail) configuration
-- DMARC (Domain-based Message Authentication) policy checking
-- BIMI (Brand Indicators for Message Identification) support
-
-### Domain Health Score
-We'll introduce a comprehensive domain health scoring system that evaluates:
-- Registration status and expiration timeline
-- DNS configuration completeness
-- Security best practices implementation
-- Performance metrics
 
 ## Conclusion
 
-The Domain Expiry Checker provides essential monitoring capabilities for organizations managing multiple domains. By expanding beyond simple expiration checks to include security verification, email configuration validation, and comprehensive health assessments, this tool helps ensure domains remain operational, secure, and properly configured.
+The Domain and SSL Certificate Expiry Checker provides essential monitoring capabilities for organizations managing multiple domains and SSL certificates. 
 
 Future development will focus on scalability improvements, API integrations with popular domain registrars, and customizable alerting mechanisms to provide advance notification before critical expirations occur.
