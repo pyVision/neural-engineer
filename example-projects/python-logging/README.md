@@ -293,7 +293,6 @@ we can see that output of the script consists of logs which should appear as exp
 2025-04-27 15:44:43,473 - my_application - INFO - Application info message - should appear
 ```
 
-
 ## Best Practices Summary
 
 1. **Always set explicit log levels** for your application loggers
@@ -303,6 +302,12 @@ we can see that output of the script consists of logs which should appear as exp
 5. **Explicitly configure problematic third-party loggers** when needed
 6. **Consider using a configuration file** for complex applications
 
+## Source Code Reference
+
+All example code from this guide can be found in:
+
+* GitHub repository: [https://github.com/pyVision/neural-engineer/tree/main/example-projects/python-logging](https://github.com/pyVision/neural-engineer/tree/main/example-projects/python-logging)
+* Jupyter notebook: `python_logging_examples.ipynb`
 
 ## Conclusion
 
