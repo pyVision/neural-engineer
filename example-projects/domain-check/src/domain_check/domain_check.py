@@ -21,7 +21,7 @@ from typing import Any, Optional, Pattern,Dict
 # Configure logging with log rotation
 import logging.handlers
 
-# Set up rotating file handler
+# Set up rotating file handler for logging
 log_file = 'domain_check.log'
 max_bytes = 10 * 1024 * 1024  # 10 MB
 backup_count = 1  # Number of backup files to keep
@@ -36,6 +36,7 @@ logging.basicConfig(
     handlers=[handler, logging.StreamHandler()]  # Log to both file and console
 )
 
+# Regex pattern to match IPv4 or IPv6 addresses
 # thanks to https://www.regextester.com/104038
 IPV4_OR_V6: Pattern[str] = re.compile(
             r"((^\s*((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))\s*$)|(^\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*$))"  # noqa: E501
@@ -43,15 +44,13 @@ IPV4_OR_V6: Pattern[str] = re.compile(
 
 suffixes: Optional[set] = None
 
-
-
 def is_valid_domain(domain: str) -> bool:
     """
     Check if a domain is valid by:
-    1. Validating its format
+    1. Validating its format using regex
     2. Checking if it has valid DNS records (A, AAAA, MX, or NS)
     
-    Returns True if domain is valid, False otherwise
+    Returns True if domain is valid, False otherwise.
     """
     # Remove protocol and path if present
     domain = re.sub(r'^.*://', '', domain)
@@ -62,7 +61,6 @@ def is_valid_domain(domain: str) -> bool:
         r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$'
     )
     
-
     # If not IP, check domain format
     if not domain_pattern.match(domain):
         logging.error(f"Invalid domain format: {domain}")
@@ -77,7 +75,7 @@ def is_valid_domain(domain: str) -> bool:
         except socket.gaierror:
             pass
 
-        # Check for various DNS record types
+        # Check for various DNS record types using dnspython
         import dns.resolver
         resolver = dns.resolver.Resolver()
         
@@ -100,46 +98,33 @@ def is_valid_domain(domain: str) -> bool:
     except Exception as e:
         logging.error(f"Error validating domain {domain}: {e}")
         return False
-    
+
 def check_domain_expiry(domain: str) -> datetime.datetime:
+    """
+    Check the expiry date and other WHOIS information for a given domain.
+    Returns a WhoisEntry object containing parsed WHOIS data.
+    """
     try:
-
-
-
         def extract_domain(url: str) -> str:
-            """Extract the domain from the given URL
+            """
+            Extract the registrable domain from the given URL or IP address.
 
-            >>> logger.info(extract_domain('http://www.google.com.au/tos.html'))
-            google.com.au
-            >>> logger.info(extract_domain('abc.def.com'))
-            def.com
-            >>> logger.info(extract_domain(u'www.公司.hk'))
-            公司.hk
-            >>> logger.info(extract_domain('chambagri.fr'))
-            chambagri.fr
-            >>> logger.info(extract_domain('www.webscraping.com'))
-            webscraping.com
-            >>> logger.info(extract_domain('198.252.206.140'))
-            stackoverflow.com
-            >>> logger.info(extract_domain('102.112.2O7.net'))
-            2o7.net
-            >>> logger.info(extract_domain('globoesporte.globo.com'))
-            globo.com
-            >>> logger.info(extract_domain('1-0-1-1-1-0-1-1-1-1-1-1-1-.0-0-0-0-0-0-0-0-0-0-0-0-0-10-0-0-0-0-0-0-0-0-0-0-0-0-0.info'))
-            0-0-0-0-0-0-0-0-0-0-0-0-0-10-0-0-0-0-0-0-0-0-0-0-0-0-0.info
-            >>> logger.info(extract_domain('2607:f8b0:4006:802::200e'))
-            1e100.net
-            >>> logger.info(extract_domain('172.217.3.110'))
-            1e100.net
+            Handles various cases including:
+            - URLs with protocol and path
+            - Internationalized domains
+            - IP addresses (returns PTR record's domain)
+            - Handles public suffixes using a suffix list
+
+            Returns the registrable domain as a string.
             """
             if IPV4_OR_V6.match(url):
-                # this is an IP address
+                # This is an IP address, get PTR record
                 return socket.gethostbyaddr(url)[0]
 
-            # load known TLD suffixes
+            # Load known TLD suffixes if not already loaded
             global suffixes
             if not suffixes:
-                # downloaded from https://publicsuffix.org/list/public_suffix_list.dat
+                # Downloaded from https://publicsuffix.org/list/public_suffix_list.dat
                 tlds_path = os.path.join(
                     os.getcwd(), os.path.dirname(__file__), "data", "public_suffix_list.dat"
                 )
@@ -156,7 +141,7 @@ def check_domain_expiry(domain: str) -> datetime.datetime:
             url = re.sub("^.*://", "", url)
             url = url.split("/")[0].lower()
 
-            # find the longest suffix match
+            # Find the longest suffix match
             domain = b""
             split_url = url.split(".")
             for section in reversed(split_url):
@@ -175,13 +160,14 @@ def check_domain_expiry(domain: str) -> datetime.datetime:
                         break
             return domain.decode("utf-8")
 
-
+        # WHOIS lookup flags and options
         flags:int =0 
         url=domain
         quiet=False
         ip_match = IPV4_OR_V6.match(url)
         inc_raw = False 
 
+        # If input is an IP, get its PTR record's domain
         if ip_match:
             domain = url
             try:
@@ -193,44 +179,42 @@ def check_domain_expiry(domain: str) -> datetime.datetime:
         else:
             domain = extract_domain(url)
 
-
+        # Convert to IDNA (punycode) for internationalized domains
         domain = domain.encode("idna").decode("utf-8")
 
-
-        # Try python-whois package
+        # Try python-whois package for WHOIS lookup
         nic_client = whois.NICClient()
-
         text = nic_client.whois_lookup(None, domain, flags, quiet=quiet)
-
-        #print(text)
         w = WhoisEntry.load(domain, text)
 
-        #print("AAA",w.expiration_date)
+        # Some TLDs may need special parsing
         if w.expiration_date is None:
             from whois.parser import WhoisCom,WhoisZa
             class WhoisEntry_new(WhoisEntry):
-
                 @staticmethod
                 def load(domain,text):
-                    #print("processing who is com ",domain,text)
                     return WhoisZa(domain, text)
-                
-            
             w1=WhoisEntry_new.load(domain, text)
-            #print("processing1",w1.expiration_date)
             w.expiration_date=w1.expiration_date
-        
- 
 
         return w
     except Exception as e:
         import traceback
-
         traceback.print_exc()
         logging.error(f"Error checking domain expiry for {domain}: {e}")
         raise
 
 def check_domains(domains_list: List[str], notification_threshold_days: int = 30) -> List[Dict]:
+    """
+    Check a list of domains for validity and expiry information.
+
+    Args:
+        domains_list: List of domain names to check.
+        notification_threshold_days: Days before expiry to consider as "expiring soon".
+
+    Returns:
+        List of dictionaries with domain, expiry date, days left, registrar, owner, and status.
+    """
     results = []
     for domain in domains_list:
         try:
@@ -288,8 +272,14 @@ def check_domains(domains_list: List[str], notification_threshold_days: int = 30
 
 def check_ssl_certificates(domains_list: List[str], notification_threshold_days: int = 30) -> List[Dict]:
     """
-    Check SSL certificate details for a list of domains
-    Returns a list of dictionaries with SSL certificate information
+    Check SSL certificate details for a list of domains.
+
+    Args:
+        domains_list: List of domain names to check.
+        notification_threshold_days: Days before expiry to consider as "expiring soon".
+
+    Returns:
+        List of dictionaries with SSL certificate information for each domain.
     """
     results = []
     for domain in domains_list:
@@ -351,4 +341,3 @@ def check_ssl_certificates(domains_list: List[str], notification_threshold_days:
             })
     
     return results
-
