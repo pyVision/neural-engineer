@@ -72,7 +72,7 @@ poetry install
 
 3. Run the application:
 ```bash
-uvicorn domain_check.main:app --reload
+poetry run uvicorn domain_check.main:app --reload
 ```
 
 Alternatively you can create a Docker image by running the command

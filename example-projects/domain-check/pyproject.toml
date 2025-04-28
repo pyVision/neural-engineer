@@ -5,7 +5,7 @@ description = "A1"
 authors = ["Donatas Rasiukevicius <donatas@fly.io>"]
 readme = "README.md"
 packages = [{include = "domain_check", from = "src"}]
-
+include = [ "templates" ]
 
 [tool.poetry.dependencies]
 python="^3.11"
@@ -14,6 +14,9 @@ uvicorn=">=0.34.2,<0.35.0"
 python-whois=">=0.9.5,<0.10.0"
 jinja2=">=3.1.6,<4.0.0"
 python-multipart=">=0.0.20,<0.0.21"
+dnspython = "^2.7.0"
+pyopenssl = "^25.0.0"
+requests = "^2.32.3"
 
 
 

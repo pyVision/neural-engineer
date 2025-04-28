@@ -328,3 +328,69 @@ def check_domains(domains_list: List[str], notification_threshold_days: int = 30
             pass
     return results
 
+def check_ssl_certificates(domains_list: List[str], notification_threshold_days: int = 30) -> List[Dict]:
+    """
+    Check SSL certificate details for a list of domains
+    Returns a list of dictionaries with SSL certificate information
+    """
+    results = []
+    for domain in domains_list:
+        try:
+            logging.info(f"Checking SSL certificate for: {domain}")
+            
+            # Validate domain
+            if not is_valid_domain(domain):
+                logging.error(f"Invalid domain: {domain}")
+                results.append({
+                    "domain": domain,
+                    "issued_to": "N/A",
+                    "issued_by": "N/A",
+                    "expiry_date": "N/A",
+                    "days_left": -1,
+                    "status": "Invalid domain"
+                })
+                continue
+                
+            # Remove protocol and path if present
+            clean_domain = re.sub(r'^.*://', '', domain)
+            clean_domain = clean_domain.split('/')[0].lower()
+            
+            # Connect to the domain on port 443 (HTTPS)
+            context = ssl.create_default_context()
+            with socket.create_connection((clean_domain, 443), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=clean_domain) as ssock:
+                    cert = ssock.getpeercert()
+            
+            # Extract certificate details
+            issued_to = dict(x[0] for x in cert['subject']).get('commonName', 'N/A')
+            issued_by = dict(x[0] for x in cert['issuer']).get('commonName', 'N/A')
+            
+            # Parse expiry date
+            expiry_date = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
+            
+            # Calculate days until expiry
+            now = datetime.datetime.now()
+            days_left = (expiry_date - now).days
+            
+            # Add to results
+            results.append({
+                "domain": domain,
+                "issued_to": issued_to,
+                "issued_by": issued_by,
+                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
+                "days_left": days_left,
+                "status": "Valid SSL" if days_left >= notification_threshold_days else "Expiring soon!"
+            })
+        except Exception as e:
+            logging.error(f"Error checking SSL for {domain}: {e}")
+            results.append({
+                "domain": domain,
+                "issued_to": "Error",
+                "issued_by": "Error",
+                "expiry_date": "Error",
+                "days_left": 0,
+                "status": "Error"
+            })
+    
+    return results
+
