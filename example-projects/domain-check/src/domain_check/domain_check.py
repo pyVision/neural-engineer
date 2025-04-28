@@ -62,18 +62,7 @@ def is_valid_domain(domain: str) -> bool:
         r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$'
     )
     
-    # # Handle IP addresses separately
-    # if IPV4_OR_V6.match(domain):
-    #     try:
-    #         socket.inet_aton(domain)  # For IPv4
-    #         return True
-    #     except:
-    #         try:
-    #             socket.inet_pton(socket.AF_INET6, domain)  # For IPv6
-    #             return True
-    #         except:
-    #             return False
-    
+
     # If not IP, check domain format
     if not domain_pattern.match(domain):
         logging.error(f"Invalid domain format: {domain}")
@@ -240,37 +229,6 @@ def check_domain_expiry(domain: str) -> datetime.datetime:
         traceback.print_exc()
         logging.error(f"Error checking domain expiry for {domain}: {e}")
         raise
-
-
-# def send_notification(domain_info: DomainInfo, email_to: str):
-#     try:
-#         msg = MIMEText(f"""
-#         Domain Expiry Alert:
-        
-#         Domain: {domain_info.domain}
-#         Domain Expiry: {domain_info.domain_expiry}
-#         SSL Expiry: {domain_info.ssl_expiry}
-        
-#         Please take necessary action if expiration is approaching.
-#         """)
-        
-#         msg['Subject'] = f'Domain/SSL Expiry Alert - {domain_info.domain}'
-#         msg['From'] = os.environ.get('SMTP_USER')
-#         msg['To'] = email_to
-        
-#         smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
-#         smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-#         smtp_user = os.environ.get('SMTP_USER')
-#         smtp_password = os.environ.get('SMTP_PASSWORD')
-
-#         with smtplib.SMTP(smtp_server, smtp_port) as server:
-#             server.starttls()
-#             server.login(smtp_user, smtp_password)
-#             server.send_message(msg)
-#             logging.info(f"Notification sent successfully for {domain_info.domain}")
-#     except Exception as e:
-#         logging.error(f"Error sending notification for {domain_info.domain}: {e}")
-#         raise
 
 def check_domains(domains_list: List[str], notification_threshold_days: int = 30) -> List[Dict]:
     results = []
