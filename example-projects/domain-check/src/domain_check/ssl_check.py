@@ -54,23 +54,25 @@ class SSLChecker:
             # Create a DNS resolver instance
             resolver = dns.resolver.Resolver()
             
-            # Try to resolve different DNS record types for the domain
-            for record_type in ['A', 'AAAA', 'CNAME']:
+            # Fetch all DNS records for the domain
+            record_types = ['A', 'AAAA', 'CNAME']
+            for record_type in record_types:
                 try:
+                    # Fetch A records for the domain itself
                     answers = resolver.resolve(domain, record_type)
+                    print("AAA",len(answers))
                     for rdata in answers:
-                        if record_type == 'A':
+                        if record_type in ['A', 'AAAA']:
+                            # Add the domain itself (if it resolves)
                             subdomains.add(domain)
                         elif record_type == 'CNAME':
-                            subdomains.add(str(rdata.target).rstrip('.'))
-                        elif record_type == 'MX':
-                            mx_domain = str(rdata.exchange).rstrip('.')
-                            subdomains.add(mx_domain)
+                            cname_target = str(rdata.target).rstrip('.')
+                            subdomains.add(cname_target)
                 except Exception as e:
                     logging.debug(f"Error checking {record_type} records for {domain}: {e}")
                     continue
 
-            # Check for common subdomain prefixes
+            # Try to find subdomains by brute-forcing common prefixes
             common_subdomains = [
                 'www', 'mail', 'webmail', 'blog', 'shop', 
                 'dev', 'api', 'admin', 'portal', 'staging'
@@ -78,10 +80,16 @@ class SSLChecker:
             for subdomain in common_subdomains:
                 try:
                     full_domain = f"{subdomain}.{domain}"
-                    answers = resolver.resolve(full_domain, 'A')
-                    subdomains.add(full_domain)
+                    for record_type in record_types:
+                        try:
+                            answers = resolver.resolve(full_domain, record_type)
+                            subdomains.add(full_domain)
+                        except Exception:
+                            continue
                 except Exception:
                     continue
+
+
                     
         except Exception as e:
             logging.error(f"Error finding subdomains for {domain}: {e}")
@@ -101,11 +109,20 @@ class SSLChecker:
         """
         try:
             # Handle Internationalized Domain Names (IDN)
-            hostname_idna = idna.encode(hostname).decode('ascii')
+            # Extract the host part for IDN encoding, but keep the original hostname for SSL connection
+            parsed_url = urlparse(f'https://{hostname}')
+            host_for_connection = hostname
+            
+            # Only apply IDN encoding for valid hostnames without underscores
+            if '_' not in parsed_url.netloc:
+                try:
+                    host_for_connection = idna.encode(parsed_url.netloc).decode('ascii')
+                except Exception as e:
+                    logging.warning(f"IDN encoding failed for {hostname}: {e}, using original hostname")
             
             # Create a socket connection and wrap it with SSL
-            with socket.create_connection((hostname_idna, port), timeout=self.timeout) as sock:
-                with self.context.wrap_socket(sock, server_hostname=hostname_idna) as ssock:
+            with socket.create_connection((host_for_connection, port), timeout=self.timeout) as sock:
+                with self.context.wrap_socket(sock, server_hostname=host_for_connection) as ssock:
                     cert = ssock.getpeercert()
                     
                     # Get certificate in binary form for additional details
@@ -143,15 +160,36 @@ class SSLChecker:
                     
         except (socket.gaierror, socket.timeout) as e:
             logging.error(f"Network error checking {hostname}: {e}")
-            return None
+            return {
+            'hostname': hostname,
+            'status': f"Connection error: {str(e)}",
+            'error_type': 'network',
+            'error_details': str(e),
+            'days_to_expire': -1,
+            'expired': True
+            }
         except ssl.SSLError as e:
             logging.error(f"SSL error checking {hostname}: {e}")
-            return None
+            return {
+            'hostname': hostname,
+            'status': f"SSL error: {str(e)}",
+            'error_type': 'ssl',
+            'error_details': str(e),
+            'days_to_expire': -1,
+            'expired': True
+            }
         except Exception as e:
             logging.error(f"Error checking certificate for {hostname}: {e}")
             import traceback
             traceback.print_exc()
-            return None
+            return {
+            'hostname': hostname,
+            'status': f"Certificate check failed: {str(e)}",
+            'error_type': 'unknown',
+            'error_details': str(e),
+            'days_to_expire': -1,
+            'expired': True
+            }
 
     def check_domain_certificates(self, domain: str, notification_threshold_days=30) -> List[Dict]:
         """
@@ -180,7 +218,21 @@ class SSLChecker:
                     days_left = r1["days_to_expire"]
                     r1["domain"] = domain
                     # Set status based on expiration threshold
-                    r1["status"] = "Valid SSL" if days_left >= notification_threshold_days else "Expiring soon!"
+                    if days_left < 0:
+                        r1["status"] = "Expired"
+                    elif days_left == 0:
+                        r1["status"] = "Expiring today!"
+                    elif days_left < notification_threshold_days:
+                        r1["status"] = "Expiring soon!"
+                    elif days_left > notification_threshold_days:
+                        r1["status"] = "Valid SSL"
+                    
+                    if r1.get("error_type",None):
+                        r1["status"] = f"Error: {r1['error_details']}"
+                    
+                    
+                    #else:
+                    #r1["status"] = "Valid SSL" if days_left >= notification_threshold_days else "Expiring soon!"
                     results.append(r1)
                         
         except Exception as e:

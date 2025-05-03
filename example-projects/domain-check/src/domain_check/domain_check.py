@@ -216,128 +216,89 @@ def check_domains(domains_list: List[str], notification_threshold_days: int = 30
         List of dictionaries with domain, expiry date, days left, registrar, owner, and status.
     """
     results = []
+    rdict={}
     for domain in domains_list:
         try:
             logging.info(f"Checking domain: {domain}")
+            
+            # Extract main domain from subdomain
+            domain_parts = domain.split('.')
+            if len(domain_parts) > 2:
+                # Handle potential subdomains by extracting the main domain
+                # This is a simplistic approach; for more accurate parsing, consider using tldextract
+                # Get the last two parts (example.com from subdomain.example.com)
+                main_domain = '.'.join(domain_parts[-2:])
+                logging.info(f"Detected subdomain. Using main domain: {main_domain}")
+                domain = main_domain
             # Validate domain
             if not is_valid_domain(domain):
                 logging.error(f"Invalid domain: {domain}")
-                results.append({
-                    "domain": domain,
-                    "expiry_date": "N/A",
-                    "days_left": -1,
-                    "registrar": "N/A",
-                    "owner": "N/A",
-                    "status": "Invalid domain"
-                })
+                if domain not in rdict:
+                    edict={
+                        "domain": domain,
+                        "expiry_date": "N/A",
+                        "days_left": -1,
+                        "registrar": "N/A",
+                        "owner": "N/A",
+                        "status": "Invalid domain"
+                    }
+                    rdict[domain]=edict
+                    results.append(edict)
                 continue
-            w = check_domain_expiry(domain)
-            
-            # Process expiry date
-            domain_expiry = datetime.datetime.now()
-            if isinstance(w.expiration_date, list):
-                domain_expiry = min(w.expiration_date)
-            else:
-                domain_expiry = w.expiration_date
-            
-            # Calculate days until expiry
-            now = datetime.datetime.now()
-            domain_days = (domain_expiry - now).days
-            
-            # Get registrar and owner info
-            registrar = getattr(w, 'registrar', 'Not available')
-            owner = getattr(w, 'name', getattr(w, 'registrant', getattr(w, 'org', 'Not available')))
-            
-            # Add to results
-            results.append({
-                "domain": domain,
-                "expiry_date": domain_expiry.strftime("%Y-%m-%d"),
-                "days_left": domain_days,
-                "registrar": registrar,
-                "owner": owner,
-                "status": "Valid domain"
-            })
+
+            if domain not in rdict:
+
+                w = check_domain_expiry(domain)
+                
+                # Process expiry date
+                domain_expiry = datetime.datetime.now()
+                if isinstance(w.expiration_date, list):
+                    domain_expiry = min(w.expiration_date)
+                else:
+                    domain_expiry = w.expiration_date
+                
+                # Calculate days until expiry
+                now = datetime.datetime.now()
+                domain_days = (domain_expiry - now).days
+                
+                # Get registrar and owner info
+                registrar = getattr(w, 'registrar', 'Not available')
+                owner = getattr(w, 'name', getattr(w, 'registrant', getattr(w, 'org', 'Not available')))
+                
+                if domain_days < 0:
+                    status = "Expired"
+                elif domain_days == 0:
+                    status = "Expiring today!"
+                elif domain_days < notification_threshold_days:
+                    status = "Expiring soon!"
+                elif domain_days > notification_threshold_days:
+                    status = "Valid domain"
+
+                edict={
+                    "domain": domain,
+                    "expiry_date": domain_expiry.strftime("%Y-%m-%d"),
+                    "days_left": domain_days,
+                    "registrar": registrar,
+                    "owner": owner,
+                    "status": "Valid domain"
+                }
+                rdict[domain]=edict
+                # Add to results
+                results.append(edict)
+
         except Exception as e:
             logging.error(f"Error processing {domain}: {e}")
-            results.append({
+            edict={
                 "domain": domain,
                 "expiry_date": "Error",
                 "days_left": 0,
                 "registrar": "Error",
                 "owner": "Error",
                 "status": "Error"
-            })
+            }
+            rdict[domain]=edict
+            results.append(edict)
             pass
     return results
 
-def check_ssl_certificates(domains_list: List[str], notification_threshold_days: int = 30) -> List[Dict]:
-    """
-    Check SSL certificate details for a list of domains.
 
-    Args:
-        domains_list: List of domain names to check.
-        notification_threshold_days: Days before expiry to consider as "expiring soon".
-
-    Returns:
-        List of dictionaries with SSL certificate information for each domain.
-    """
-    results = []
-    for domain in domains_list:
-        try:
-            logging.info(f"Checking SSL certificate for: {domain}")
-            
-            # Validate domain
-            if not is_valid_domain(domain):
-                logging.error(f"Invalid domain: {domain}")
-                results.append({
-                    "domain": domain,
-                    "issued_to": "N/A",
-                    "issued_by": "N/A",
-                    "expiry_date": "N/A",
-                    "days_left": -1,
-                    "status": "Invalid domain"
-                })
-                continue
-                
-            # Remove protocol and path if present
-            clean_domain = re.sub(r'^.*://', '', domain)
-            clean_domain = clean_domain.split('/')[0].lower()
-            
-            # Connect to the domain on port 443 (HTTPS)
-            context = ssl.create_default_context()
-            with socket.create_connection((clean_domain, 443), timeout=10) as sock:
-                with context.wrap_socket(sock, server_hostname=clean_domain) as ssock:
-                    cert = ssock.getpeercert()
-            
-            # Extract certificate details
-            issued_to = dict(x[0] for x in cert['subject']).get('commonName', 'N/A')
-            issued_by = dict(x[0] for x in cert['issuer']).get('commonName', 'N/A')
-            
-            # Parse expiry date
-            expiry_date = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-            
-            # Calculate days until expiry
-            now = datetime.datetime.now()
-            days_left = (expiry_date - now).days
-            
-            # Add to results
-            results.append({
-                "domain": domain,
-                "issued_to": issued_to,
-                "issued_by": issued_by,
-                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
-                "days_left": days_left,
-                "status": "Valid SSL" if days_left >= notification_threshold_days else "Expiring soon!"
-            })
-        except Exception as e:
-            logging.error(f"Error checking SSL for {domain}: {e}")
-            results.append({
-                "domain": domain,
-                "issued_to": "Error",
-                "issued_by": "Error",
-                "expiry_date": "Error",
-                "days_left": 0,
-                "status": "Error"
-            })
-    
-    return results

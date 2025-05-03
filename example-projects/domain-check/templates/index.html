@@ -74,7 +74,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.311);
             padding: 20px;
             border-radius: 5px;
             text-align: center;
@@ -121,28 +121,24 @@
             color: #2c5282;
         }
 
-        /* Tab styles */
-        .tabs {
-            overflow: hidden;
-            border: 1px solid #ccc;
-            background-color: #f1f1f1;
-            border-radius: 5px 5px 0 0;
-            margin-bottom: -1px;
-        }
+
 
         .tab-button {
-            background-color: inherit;
-            float: left;
+            background-color: rgba(255, 255, 255, 0.614);
+            color : black;
             border: none;
             outline: none;
             cursor: pointer;
             padding: 14px 16px;
             transition: 0.3s;
             font-size: 16px;
+            flex: 1; /* Added - makes tabs equal width */
+            text-align: center; /* Added - centers text */
+            white-space: nowrap; /* Added - prevents text wrapping */
         }
 
         .tab-button:hover {
-            background-color: #ddd;
+            background-color: #4CAF50;
         }
 
         .tab-button.active {
@@ -160,6 +156,73 @@
         .tab-content.active {
             display: block;
         }
+        
+        /* Notification form styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .notification-message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .notification-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .domains-list {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .domain-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .domain-item:last-child {
+            border-bottom: none;
+        }
+        
+        .remove-domain {
+            color: #dc3545;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -170,6 +233,7 @@
         <div class="tabs">
             <button class="tab-button {% if active_tab == 'domain' %}active{% endif %}" onclick="openTab(event, 'domain-tab')">Domain Expiry Checker</button>
             <button class="tab-button {% if active_tab == 'ssl' %}active{% endif %}" onclick="openTab(event, 'ssl-tab')">SSL Certificate Checker</button>
+            <button class="tab-button {% if active_tab == 'notification' %}active{% endif %}" onclick="openTab(event, 'notification-tab')">Notification Settings</button>
         </div>
 
         <!-- Domain Expiry Tab -->
@@ -222,9 +286,9 @@
         <!-- SSL Certificate Tab -->
         <div id="ssl-tab" class="tab-content {% if active_tab == 'ssl' %}active{% endif %}">
             <form method="post" id="sslForm" action="/check-ssl" onsubmit="return validateForm('sslDomainsInput', 'sslErrorMessage')">
-                <p>Enter domain names (one per line or comma separated, maximum 5 domains):</p>
+                <p>Enter domain names (one per line or comma separated, maximum 100 domains):</p>
                 <textarea name="domains" id="sslDomainsInput" placeholder="example.com, example.org">{{ domains }}</textarea>
-                <div id="sslErrorMessage" class="error-message">Maximum 5 domains allowed.</div>
+                <div id="sslErrorMessage" class="error-message">Maximum 100 domains allowed.</div>
                 <p>Notification threshold (days):</p>
                 <input type="number" name="threshold" value="{{ threshold }}" min="1" max="365">
                 <br><br>
@@ -238,7 +302,7 @@
                     <tr>
                         <th>Domain</th>
                         <th>Hostname</th>
-                        <th>Certificate Issuer</th>
+                        <!-- <th>Certificate Issuer</th> -->
                         <th>Expiry Date</th>
                         <th>Days Left</th>
                         <th>Status</th>
@@ -247,7 +311,7 @@
                     <tr>
                         <td>{{ result.domain }}</td>
                         <td>{{ result.hostname }}</td>
-                        <td>{{ result.cert_issuer }}</td>
+                        <!-- <td>{{ result.cert_issuer }}</td> -->
                         <td>{{ result.not_after }}</td>
                         <td>{{ result.days_to_expire }}</td>
                         <td class="{% if result.status == 'Invalid domain' %}alert{% elif result.days_to_expire < threshold %}alert{% else %}ok{% endif %}">
@@ -259,6 +323,34 @@
             </div>
             {% endif %}
         </div>
+        
+        <!-- Notification Settings Tab -->
+        <div id="notification-tab" class="tab-content {% if active_tab == 'notification' %}active{% endif %}">
+            <h2>Domain Expiry Notifications</h2>
+            <p>Register to receive email notifications when your domains or SSL certificates are about to expire.</p>
+            
+            <div class="form-group">
+                <label for="notificationEmail">Email Address:</label>
+                <input type="email" id="notificationEmail" name="email" placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="notificationDomains">Domains (one per line or comma separated):</label>
+                <textarea id="notificationDomains" name="domains" placeholder="example.com, example.org"></textarea>
+            </div>
+            
+            <button type="button" onclick="registerDomains()">Register Domains for Notifications</button>
+            <button type="button" onclick="getDomains()">View My Registered Domains</button>
+            
+            <div id="notificationSuccess" class="notification-message success"></div>
+            <div id="notificationError" class="notification-message error"></div>
+            
+            <div id="registeredDomains" class="domains-list" style="display:none;">
+                <h3>Your Registered Domains</h3>
+                <div id="domainsList"></div>
+                <button type="button" onclick="unregisterAllDomains()" class="remove-domain">Unregister All Domains</button>
+            </div>
+        </div>
 
         <div class="about-section">
             <h2>About Domain & SSL Expiry Checker</h2>
@@ -268,6 +360,7 @@
                 <li><strong>SSL Certificate Validation:</strong> Verify SSL certificates and their expiration dates</li>
                 <li><strong>Bulk Checking:</strong> Check multiple domains at once (up to 5 domains)</li>
                 <li><strong>Early Warnings:</strong> Configurable threshold for expiration alerts</li>
+                <li><strong>Email Notifications:</strong> Get alerts before your domains or certificates expire</li>
             </ul>
             <p>Enter your domains above to check their expiration status and ensure you never miss a renewal.</p>
         </div>
@@ -299,7 +392,7 @@
                 domains = domainsText.split('\n').map(d => d.trim()).filter(d => d);
             }
             
-            if (domains.length > 5) {
+            if (domains.length > 1000) {
                 document.getElementById(errorMsgId).style.display = 'block';
                 return false;
             }
@@ -330,12 +423,225 @@
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
         }
+        
+        // Notification API functions
+        function registerDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            const domainsText = document.getElementById('notificationDomains').value;
+            let domains = [];
+            
+            // Split by commas or newlines
+            if (domainsText.includes(',')) {
+                domains = domainsText.split(',').map(d => d.trim()).filter(d => d);
+            } else {
+                domains = domainsText.split('\n').map(d => d.trim()).filter(d => d);
+            }
+            
+            if (!email) {
+                showNotificationError("Please enter a valid email address");
+                return;
+            }
+            
+            if (domains.length === 0) {
+                showNotificationError("Please enter at least one domain");
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Registering domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API
+            fetch('/api/notifications/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    domains: domains
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    document.getElementById('notificationDomains').value = '';
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
+        
+        function getDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Retrieving domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API
+            fetch(`/api/notifications/${encodeURIComponent(email)}/domains`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loadingDialog').style.display = 'none';
+                    
+                    if (data.domains && data.domains.length > 0) {
+                        displayDomains(data.domains, email);
+                    } else {
+                        showNotificationError("No domains registered for this email address");
+                        document.getElementById('registeredDomains').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loadingDialog').style.display = 'none';
+                    showNotificationError("Error: " + error.message);
+                });
+        }
+        
+        function unregisterDomain(email, domain) {
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Unregistering domain...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API
+            fetch('/api/notifications/unregister', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    domains: [domain]
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    // Refresh the domains list
+                    getDomains();
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
+        
+        function unregisterAllDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+            
+            if (!confirm("Are you sure you want to unregister all domains? You will no longer receive notifications for any domain.")) {
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Unregistering all domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API
+            fetch('/api/notifications/unregister', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess("All domains have been unregistered");
+                    document.getElementById('registeredDomains').style.display = 'none';
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
+        
+        function displayDomains(domains, email) {
+            const domainsListElement = document.getElementById('domainsList');
+            domainsListElement.innerHTML = '';
+            
+            domains.forEach(domain => {
+                const domainItem = document.createElement('div');
+                domainItem.className = 'domain-item';
+                
+                const domainText = document.createElement('span');
+                domainText.textContent = domain;
+                
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-domain';
+                removeButton.textContent = 'Remove';
+                removeButton.onclick = function() { unregisterDomain(email, domain); };
+                
+                domainItem.appendChild(domainText);
+                domainItem.appendChild(removeButton);
+                domainsListElement.appendChild(domainItem);
+            });
+            
+            document.getElementById('registeredDomains').style.display = 'block';
+        }
+        
+        function showNotificationSuccess(message) {
+            const successElement = document.getElementById('notificationSuccess');
+            successElement.textContent = message;
+            successElement.style.display = 'block';
+            
+            document.getElementById('notificationError').style.display = 'none';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                successElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showNotificationError(message) {
+            const errorElement = document.getElementById('notificationError');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            document.getElementById('notificationSuccess').style.display = 'none';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
 
         // Set initial active tab on page load
         document.addEventListener("DOMContentLoaded", function() {
             {% if active_tab == 'ssl' %}
             document.querySelector('.tab-button:nth-child(2)').classList.add('active');
             document.getElementById('ssl-tab').classList.add('active');
+            {% elif active_tab == 'notification' %}
+            document.querySelector('.tab-button:nth-child(3)').classList.add('active');
+            document.getElementById('notification-tab').classList.add('active');
             {% else %}
             document.querySelector('.tab-button:first-child').classList.add('active');
             document.getElementById('domain-tab').classList.add('active');
