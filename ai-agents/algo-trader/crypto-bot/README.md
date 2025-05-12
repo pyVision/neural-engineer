@@ -436,13 +436,15 @@ The command-line utility offers several advantages:
 - **Structured Output**: Information is organized into logical sections
 - **Display Customization**: Control how much data to show with various flags
 
-Example: Getting a comprehensive ticker view for Bitcoin and Ethereum:
+For the complete source code and more examples, check the GitHub repository at:
+https://github.com/pyVision/neural-engineer/tree/main/ai-agents/algo-trader/crypto-bot
 
-```bash
-poetry run src/crypto_bot/crypto_cli.py ticker --exchange binance --symbol BTC/USDT,ETH/USDT
-```
+The repository contains:
+- Full implementation of the CryptoExchange wrapper class
+- Command line interface with all features
+- Example Jupyter notebooks
+- Documentation and usage guides
 
-This provides essential price information, trading volume, price changes, and order book snapshot - all in a well-organized format without writing any code.
 
 ## Conclusion
 
