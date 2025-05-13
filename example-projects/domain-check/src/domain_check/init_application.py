@@ -59,10 +59,10 @@ def load_environment() -> Dict[str, str]:
         "APP_PORT": os.environ.get("APP_PORT", "8000"),
         "DEBUG": os.environ.get("DEBUG", "False"),
         
-        # GCP specific settings for Memorystore
-        "GCP_PROJECT": os.environ.get("GCP_PROJECT", ""),
-        "GCP_REGION": os.environ.get("GCP_REGION", ""),
-        "MEMORYSTORE_INSTANCE_ID": os.environ.get("MEMORYSTORE_INSTANCE_ID", ""),
+        # # GCP specific settings for Memorystore
+        # "GCP_PROJECT": os.environ.get("GCP_PROJECT", ""),
+        # "GCP_REGION": os.environ.get("GCP_REGION", ""),
+        # "MEMORYSTORE_INSTANCE_ID": os.environ.get("MEMORYSTORE_INSTANCE_ID", ""),
     }
     
     return env_vars
@@ -119,11 +119,11 @@ def init_application() -> Dict[str, Any]:
     return {
         "initialized": True,
         "debug_mode": debug_mode,
-        "env_vars": {k: "***" if k.endswith("PASSWORD") else v for k, v in env_vars.items()},
+        "env_vars": {k:v for k, v in env_vars.items()},
     }
 
 # Run initialization if this module is imported
 initialization_result = init_application()
-
+print("Initialization result:", initialization_result)
 # Export for use in other modules
 __all__ = ['init_application', 'load_environment', 'initialization_result']

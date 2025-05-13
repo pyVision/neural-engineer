@@ -228,7 +228,7 @@ class SSLChecker:
                         r1["status"] = "Valid SSL"
                     
                     if r1.get("error_type",None):
-                        r1["status"] = f"Error: {r1['error_details']}"
+                        r1["status"] = f"Error"
                     
                     
                     #else:

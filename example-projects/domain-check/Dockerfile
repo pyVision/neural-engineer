@@ -10,7 +10,7 @@ COPY pyproject.toml poetry.lock ./
 COPY README.md ./
 COPY src/ ./src
 COPY templates/ ./templates
-
+COPY .env ./.env
 RUN poetry install --no-root
 
 

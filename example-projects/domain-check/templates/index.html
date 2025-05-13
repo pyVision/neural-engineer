@@ -373,8 +373,69 @@
             <p id="loadingMessage">Checking domain expiry dates...</p>
         </div>
     </div>
+    
+    <!-- OTP Verification Dialog -->
+    <div id="otpVerificationDialog" class="loading-dialog">
+        <div class="loading-content" style="background-color: white; width: 400px;">
+            <h3>Email Verification Required</h3>
+            <p>A verification code has been sent to your email address. Please enter it below to continue.</p>
+            <div id="otpTimestampInfo" class="form-group" style="font-size: 13px; color: #666; margin: 8px 0; padding: 8px; background-color: #f8f8f8; border-radius: 4px;">
+                <p id="otpSentTime">Sent: <span id="otpCreationTime"></span></p>
+                <p id="otpExpiryTime">Valid for: <span id="otpExpiresIn"></span></p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="otpInput" placeholder="Enter verification code" style="width: 100%; padding: 10px; margin: 10px 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <button onclick="cancelOTPVerification()" style="background-color: #dc3545;">Cancel</button>
+                <button onclick="resendOTP()" style="background-color: #4a6da7;">Resend Code</button>
+                <button onclick="verifyOTP()" style="background-color: #28a745;">Verify</button>
+            </div>
+            <p id="otpErrorMessage" style="color: red; display: none; margin-top: 10px;"></p>
+            <p id="otpResendMessage" style="color: #4a6da7; display: none; margin-top: 10px;"></p>
+        </div>
+    </div>
 
     <script>
+        // Global variables to store pending operation details
+        let pendingOperation = null;
+        let pendingEmail = null;
+        let pendingDomains = null;
+        let pendingOTP = null; // New variable to store the OTP
+        
+        // Function to store OTP in session storage
+        function storeOTP(email, operation, otp) {
+            const otpData = {
+                email: email,
+                operation: operation,
+                otp: otp,
+                timestamp: new Date().getTime()
+            };
+            
+            // Store in session storage - will be available until the tab is closed
+            sessionStorage.setItem('storedOTP_' + email, JSON.stringify(otpData));
+            console.log('OTP stored in session for:', email);
+        }
+        
+        // Function to get stored OTP if available
+        function getStoredOTP(email, operation) {
+            const storedData = sessionStorage.getItem('storedOTP_' + email);
+            if (!storedData) return null;
+            
+            try {
+                const otpData = JSON.parse(storedData);
+                
+                // Only return if it's for the same email
+                if (otpData.email === email) {
+                    return otpData;
+                }
+                return null;
+            } catch (e) {
+                console.error('Error parsing stored OTP:', e);
+                return null;
+            }
+        }
+        
         function showLoading(type) {
             const message = type === 'ssl' ? 'Checking SSL certificates...' : 'Checking domain expiry dates...';
             document.getElementById('loadingMessage').textContent = message;
@@ -425,6 +486,134 @@
         }
         
         // Notification API functions
+        // OTP related functions
+        function showOTPDialog() {
+            document.getElementById('otpErrorMessage').style.display = 'none';
+            document.getElementById('otpInput').value = '';
+            document.getElementById('otpVerificationDialog').style.display = 'block';
+            console.log("OTP dialog should be visible now");
+            
+            // Force the dialog to be visible
+            const dialog = document.getElementById('otpVerificationDialog');
+            dialog.style.display = 'block';
+            dialog.style.opacity = '1';
+            dialog.style.visibility = 'visible';
+        }
+        
+        function hideOTPDialog() {
+            document.getElementById('otpVerificationDialog').style.display = 'none';
+        }
+        
+        function cancelOTPVerification() {
+            hideOTPDialog();
+            pendingOperation = null;
+            pendingEmail = null;
+            pendingDomains = null;
+        }
+        
+        function resendOTP() {
+            // Request a new OTP code with force_new=true to bypass the existing code check
+            document.getElementById('otpResendMessage').style.display = 'none';
+            
+            if (pendingEmail && pendingOperation) {
+                requestOTP(pendingEmail, pendingOperation, true)
+                    .then(success => {
+                        if (success) {
+                            document.getElementById('otpResendMessage').textContent = "New verification code sent! Please check your email.";
+                            document.getElementById('otpResendMessage').style.display = 'block';
+                            document.getElementById('otpInput').value = '';
+                        }
+                    });
+            }
+        }
+        
+        function requestOTP(email, operation, forceNew = false) {
+            console.log("Requesting OTP for email:", email, "operation:", operation, "forceNew:", forceNew);
+            document.getElementById('loadingMessage').textContent = "Sending verification code...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            document.getElementById('otpResendMessage').style.display = 'none';
+            
+            return fetch('/api/otp/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    operation: operation,
+                    force_new: forceNew
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                
+                if (data.status === 'success' || data.status === 'warning' || data.status === 'info') {
+                    // Update the OTP dialog with creation time and expiry info
+                    if (data.created_at) {
+                        document.getElementById('otpCreationTime').textContent = data.created_at;
+                    }
+                    
+                    if (data.expires_in) {
+                        document.getElementById('otpExpiresIn').textContent = data.expires_in;
+                    }
+                    
+                    // Show the OTP dialog
+                    showOTPDialog();
+                    
+                    // If it's an existing code, show a message
+                    if (data.existing_code) {
+                        document.getElementById('otpResendMessage').textContent = "Using existing verification code. Click 'Resend Code' if you need a new one.";
+                        document.getElementById('otpResendMessage').style.display = 'block';
+                    }
+                    
+                    return true;
+                } else {
+                    showNotificationError(data.message || "Failed to send verification code");
+                    return false;
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+                return false;
+            });
+        }
+        
+        function verifyOTP() {
+            const otp = document.getElementById('otpInput').value.trim();
+            if (!otp) {
+                document.getElementById('otpErrorMessage').textContent = "Please enter the verification code";
+                document.getElementById('otpErrorMessage').style.display = 'block';
+                return;
+            }
+            
+            // Store the OTP for use with the actual operations
+            pendingOTP = otp;
+            
+            // Store OTP in session storage
+            storeOTP(pendingEmail, pendingOperation, otp);
+            
+            document.getElementById('loadingMessage').textContent = "Processing...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            hideOTPDialog();
+            
+            // Instead of verifying with a separate API call, directly proceed with the operation
+            // and pass the OTP along with the actual request
+            if (pendingOperation === 'register') {
+                performRegistration(pendingEmail, pendingDomains, pendingOTP);
+                performGetDomains(pendingEmail, pendingOTP);
+            } else if (pendingOperation === 'view') {
+                performGetDomains(pendingEmail, pendingOTP);
+            } else if (pendingOperation === 'unregister') {
+                performUnregistration(pendingEmail, pendingDomains, pendingOTP);
+            } else {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Unknown operation type");
+            }
+        }
+
+        
         function registerDomains() {
             const email = document.getElementById('notificationEmail').value;
             const domainsText = document.getElementById('notificationDomains').value;
@@ -447,11 +636,27 @@
                 return;
             }
             
+            // Store details for pending operation
+            pendingOperation = 'register';
+            pendingEmail = email;
+            pendingDomains = domains;
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'register');
+            if (storedOTP) {
+                performRegistration(email, domains, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'register');
+            }
+        }
+        
+        function performRegistration(email, domains, otp) {
             // Show loading state
             document.getElementById('loadingMessage').textContent = "Registering domains...";
             document.getElementById('loadingDialog').style.display = 'block';
             
-            // Call the API
+            // Call the API with the OTP included
             fetch('/api/notifications/register', {
                 method: 'POST',
                 headers: {
@@ -459,7 +664,8 @@
                 },
                 body: JSON.stringify({
                     email: email,
-                    domains: domains
+                    domains: domains,
+                    otp: otp
                 })
             })
             .then(response => response.json())
@@ -468,6 +674,15 @@
                 if (data.status === 'success') {
                     showNotificationSuccess(data.message);
                     document.getElementById('notificationDomains').value = '';
+                    // Clear pending values after successful operation
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingDomains = null;
+                    pendingOTP = null;
+                } else if (data.require_otp) {
+                    // If OTP verification failed, show the OTP dialog again
+                    showNotificationError(data.message);
+                    showOTPDialog();
                 } else {
                     showNotificationError(data.message);
                 }
@@ -486,21 +701,48 @@
                 return;
             }
             
+            // Store details for pending operation
+            pendingOperation = 'view';
+            pendingEmail = email;
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'view');
+            if (storedOTP) {
+                performGetDomains(email, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'view');
+            }
+        }
+            
+        function performGetDomains(email, otp) {
             // Show loading state
             document.getElementById('loadingMessage').textContent = "Retrieving domains...";
             document.getElementById('loadingDialog').style.display = 'block';
             
-            // Call the API
-            fetch(`/api/notifications/${encodeURIComponent(email)}/domains`)
+            // Call the API with OTP as query parameter
+            fetch(`/api/notifications/${encodeURIComponent(email)}/domains?otp=${encodeURIComponent(otp)}`)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('loadingDialog').style.display = 'none';
                     
                     if (data.domains && data.domains.length > 0) {
                         displayDomains(data.domains, email);
+                        // Clear pending values after successful operation
+                        pendingOperation = null;
+                        pendingEmail = null;
+                        pendingOTP = null;
+                    } else if (data.require_otp) {
+                        // If OTP verification failed, show the OTP dialog again
+                        showNotificationError(data.message);
+                        showOTPDialog();
                     } else {
                         showNotificationError("No domains registered for this email address");
                         document.getElementById('registeredDomains').style.display = 'none';
+                        // Clear pending values after successful operation
+                        pendingOperation = null;
+                        pendingEmail = null;
+                        pendingOTP = null;
                     }
                 })
                 .catch(error => {
@@ -509,12 +751,12 @@
                 });
         }
         
-        function unregisterDomain(email, domain) {
+        function performUnregistration(email, domains, otp) {
             // Show loading state
-            document.getElementById('loadingMessage').textContent = "Unregistering domain...";
+            document.getElementById('loadingMessage').textContent = "Unregistering domains...";
             document.getElementById('loadingDialog').style.display = 'block';
             
-            // Call the API
+            // Call the API with the OTP included
             fetch('/api/notifications/unregister', {
                 method: 'POST',
                 headers: {
@@ -522,7 +764,8 @@
                 },
                 body: JSON.stringify({
                     email: email,
-                    domains: [domain]
+                    domains: domains,
+                    otp: otp
                 })
             })
             .then(response => response.json())
@@ -530,8 +773,20 @@
                 document.getElementById('loadingDialog').style.display = 'none';
                 if (data.status === 'success') {
                     showNotificationSuccess(data.message);
-                    // Refresh the domains list
-                    getDomains();
+                    // Clear pending values after successful operation
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingDomains = null;
+                    pendingOTP = null;
+                    
+                    // If we were showing the registered domains, refresh the list
+                    if (document.getElementById('registeredDomains').style.display === 'block') {
+                        getDomains();
+                    }
+                } else if (data.require_otp) {
+                    // If OTP verification failed, show the OTP dialog again
+                    showNotificationError(data.message);
+                    showOTPDialog();
                 } else {
                     showNotificationError(data.message);
                 }
@@ -540,6 +795,22 @@
                 document.getElementById('loadingDialog').style.display = 'none';
                 showNotificationError("Error: " + error.message);
             });
+        }
+        
+        function unregisterDomain(email, domain) {
+            // Store details for pending operation
+            pendingOperation = 'unregister';
+            pendingEmail = email;
+            pendingDomains = [domain];
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'unregister');
+            if (storedOTP) {
+                performUnregistration(email, [domain], storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'unregister');
+            }
         }
         
         function unregisterAllDomains() {
@@ -554,34 +825,19 @@
                 return;
             }
             
-            // Show loading state
-            document.getElementById('loadingMessage').textContent = "Unregistering all domains...";
-            document.getElementById('loadingDialog').style.display = 'block';
+            // Store details for pending operation
+            pendingOperation = 'unregister';
+            pendingEmail = email;
+            pendingDomains = null; // Null indicates all domains
             
-            // Call the API
-            fetch('/api/notifications/unregister', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: email
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('loadingDialog').style.display = 'none';
-                if (data.status === 'success') {
-                    showNotificationSuccess("All domains have been unregistered");
-                    document.getElementById('registeredDomains').style.display = 'none';
-                } else {
-                    showNotificationError(data.message);
-                }
-            })
-            .catch(error => {
-                document.getElementById('loadingDialog').style.display = 'none';
-                showNotificationError("Error: " + error.message);
-            });
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'unregister');
+            if (storedOTP) {
+                performUnregistration(email, null, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'unregister');
+            }
         }
         
         function displayDomains(domains, email) {

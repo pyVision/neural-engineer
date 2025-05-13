@@ -2,6 +2,7 @@ try:
     import whois 
     from whois import whois as whois2
     from whois.parser import WhoisEntry
+    import tldextract
 except ImportError:
     print("Please install the python-whois package: pip install python-whois")
     raise
@@ -200,6 +201,7 @@ def check_domain_expiry(domain: str) -> datetime.datetime:
         return w
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         logging.error(f"Error checking domain expiry for {domain}: {e}")
         raise
@@ -221,15 +223,19 @@ def check_domains(domains_list: List[str], notification_threshold_days: int = 30
         try:
             logging.info(f"Checking domain: {domain}")
             
-            # Extract main domain from subdomain
-            domain_parts = domain.split('.')
-            if len(domain_parts) > 2:
-                # Handle potential subdomains by extracting the main domain
-                # This is a simplistic approach; for more accurate parsing, consider using tldextract
-                # Get the last two parts (example.com from subdomain.example.com)
-                main_domain = '.'.join(domain_parts[-2:])
-                logging.info(f"Detected subdomain. Using main domain: {main_domain}")
-                domain = main_domain
+            # Use tldextract to properly handle domain extraction
+            ext = tldextract.extract(domain)
+            # Get the registered domain (domain name + TLD)
+            main_domain = f"{ext.domain}.{ext.suffix}" if ext.suffix else domain
+            logging.info(f"Extracted main domain: {main_domain}")
+            domain = main_domain
+            # if len(domain_parts) > 2:
+            #     # Handle potential subdomains by extracting the main domain
+            #     # This is a simplistic approach; for more accurate parsing, consider using tldextract
+            #     # Get the last two parts (example.com from subdomain.example.com)
+            #     main_domain = '.'.join(domain_parts[-2:])
+            #     logging.info(f"Detected subdomain. Using main domain: {main_domain}")
+            #     domain = main_domain
             # Validate domain
             if not is_valid_domain(domain):
                 logging.error(f"Invalid domain: {domain}")
@@ -280,7 +286,7 @@ def check_domains(domains_list: List[str], notification_threshold_days: int = 30
                     "days_left": domain_days,
                     "registrar": registrar,
                     "owner": owner,
-                    "status": "Valid domain"
+                    "status": status
                 }
                 rdict[domain]=edict
                 # Add to results

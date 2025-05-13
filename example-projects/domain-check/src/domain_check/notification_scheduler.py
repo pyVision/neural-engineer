@@ -234,13 +234,66 @@ class NotificationScheduler:
                     
                     logging.info(f"Notification email sent to {email}")
                     sent = True
+                    
+                    # Track successful notification in PostHog
+                    try:
+                        from .analytics import track_event
+                        track_event(
+                            distinct_id=email,
+                            event_name='notification_sent',
+                            properties={
+                                'success': True,
+                                'expiring_domains_count': len(expiring_domains),
+                                'expiring_certs_count': len(expiring_certs),
+                                'threshold_days': days_threshold,
+                                'timestamp': datetime.datetime.now().isoformat()
+                            }
+                        )
+                    except Exception as analytics_error:
+                        logging.warning(f"Failed to track notification analytics for {email}: {analytics_error}")
+                        
                 except Exception as e:
                     logging.error(f"Failed to send email to {email}: {e}")
                     sent = False
+                    
+                    # Track failed notification in PostHog
+                    try:
+                        from .analytics import track_event
+                        track_event(
+                            distinct_id=email,
+                            event_name='notification_failed',
+                            properties={
+                                'error_type': type(e).__name__,
+                                'error_message': str(e),
+                                'expiring_domains_count': len(expiring_domains),
+                                'expiring_certs_count': len(expiring_certs),
+                                'threshold_days': days_threshold,
+                                'timestamp': datetime.datetime.now().isoformat()
+                            }
+                        )
+                    except Exception as analytics_error:
+                        logging.warning(f"Failed to track notification failure analytics for {email}: {analytics_error}")
             else:
                 # Log the email instead of sending if SMTP is not configured
                 logging.info(f"SMTP not configured. Would send email to {email} with {len(expiring_domains)} domains and {len(expiring_certs)} certs")
                 sent = False
+                
+                # Track skipped notification in PostHog (SMTP not configured)
+                try:
+                    from .analytics import track_event
+                    track_event(
+                        distinct_id=email,
+                        event_name='notification_skipped',
+                        properties={
+                            'reason': 'smtp_not_configured',
+                            'expiring_domains_count': len(expiring_domains),
+                            'expiring_certs_count': len(expiring_certs),
+                            'threshold_days': days_threshold,
+                            'timestamp': datetime.datetime.now().isoformat()
+                        }
+                    )
+                except Exception as analytics_error:
+                    logging.warning(f"Failed to track skipped notification analytics for {email}: {analytics_error}")
             
             # Return result
             return {

@@ -2,11 +2,15 @@ import os
 import hashlib
 import logging
 import redis
+import threading
 from typing import List, Dict, Optional, Any, Union
 from fastapi import HTTPException
 
 # Import initialization module to load environment variables
 from .init_application import initialization_result
+# Import domain check and SSL checker for immediate notifications
+from .domain_check import check_domains
+from .ssl_check import SSLChecker
 
 # Configure logging
 logging.basicConfig(
@@ -112,6 +116,31 @@ class NotificationHandler:
                     self.redis_client.hset(email_hash, key, ",".join(value))
                 else:
                     self.redis_client.hset(email_hash, key, value)
+            
+            # Determine which domains are newly added
+            new_domains = all_domains
+            
+            # Send immediate notification for newly registered domains in the background
+            if new_domains:
+                try:
+                    logger.info(f"Triggering background notification check for {len(new_domains)} newly registered domains")
+                    # Start a background thread to send the notification
+                    notification_thread = threading.Thread(
+                        target=self._send_notification_in_background,
+                        args=(email, new_domains),
+                        daemon=True  # Make it a daemon thread so it won't block application shutdown
+                    )
+                    notification_thread.start()
+                    
+                    return {
+                        "status": "success",
+                        "message": f"Registered {len(domains)} domains for {email}. Notification will be sent in background.",
+                        "domains": all_domains,
+                        "notification_sent_in_background": True
+                    }
+                except Exception as e:
+                    logger.error(f"Error setting up background notification: {e}")
+                    # Continue with success response even if notification setup fails
             
             return {
                 "status": "success",
@@ -231,3 +260,74 @@ class NotificationHandler:
         except redis.RedisError as e:
             logger.error(f"Redis error while retrieving all subscriptions: {e}")
             return []
+    
+    def send_immediate_notification(self, email: str, domains: List[str]) -> Dict[str, Any]:
+        """
+        Send an immediate domain check notification for newly registered domains.
+        
+        Args:
+            email: Email address for notifications
+            domains: List of domain names to check
+            
+        Returns:
+            Dict with notification status
+        """
+        try:
+            logger.info(f"Sending immediate notification for {len(domains)} domains registered by {email}")
+            
+            # Default threshold from environment or use 30 days
+            days_threshold = int(os.environ.get("NOTIFICATION_THRESHOLD_DAYS", 30))
+            
+            # We need to import here to avoid circular imports
+            from .notification_scheduler import NotificationScheduler
+            scheduler = NotificationScheduler()
+            
+            # Check domain expirations
+            domain_results = check_domains(domains, days_threshold)
+            
+            # Check SSL certificates
+            ssl_checker = SSLChecker()
+            ssl_results = []
+            for domain in domains:
+                try:
+                    ssl_certificates = ssl_checker.check_domain_certificates(domain, days_threshold)
+                    ssl_results.extend(ssl_certificates)
+                except Exception as e:
+                    logger.error(f"Error checking SSL for {domain}: {e}")
+            
+            # Send notification with the results
+            notification_result = scheduler._send_notification(
+                email=email,
+                expiring_domains=domain_results,
+                expiring_certs=ssl_results,
+                days_threshold=days_threshold
+            )
+            
+            logger.info(f"Immediate notification result: {notification_result}")
+            return notification_result
+        except Exception as e:
+            logger.error(f"Error sending immediate notification: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                "status": "error",
+                "message": f"Failed to send immediate notification: {str(e)}",
+                "email": email
+            }
+    
+    def _send_notification_in_background(self, email: str, domains: List[str]) -> None:
+        """
+        Helper method to send notifications in a background thread.
+        
+        Args:
+            email: Email address for notifications
+            domains: List of domain names to check
+        """
+        try:
+            logger.info(f"Background thread: Sending notification for {len(domains)} domains to {email}")
+            notification_result = self.send_immediate_notification(email, domains)
+            logger.info(f"Background notification completed with status: {notification_result.get('status', 'unknown')}")
+        except Exception as e:
+            logger.error(f"Error in background notification thread: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
