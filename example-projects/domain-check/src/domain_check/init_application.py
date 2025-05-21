@@ -39,31 +39,42 @@ def load_environment() -> Dict[str, str]:
         logger.warning(f"No .env file found at {env_path}, using default values")
     
     # Return a dictionary of all environment variables used by the application
-    env_vars = {
+    # Collect all environment variables
+    env_vars = {}
+    
+    # Define default values for required variables
+    defaults = {
         # Redis configuration
-        "REDIS_HOST": os.environ.get("REDIS_HOST", "localhost"),
-        "REDIS_PORT": os.environ.get("REDIS_PORT", "6379"),
-        "REDIS_PASSWORD": os.environ.get("REDIS_PASSWORD", ""),
+        "REDIS_HOST": "localhost",
+        "REDIS_PORT": "6379",
+        "REDIS_PASSWORD": "",
+        "REDIS_NAMESPACE": "",
         
         # SMTP configuration for email notifications
-        "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
-        "SMTP_PORT": os.environ.get("SMTP_PORT", "587"),
-        "SMTP_USERNAME": os.environ.get("SMTP_USERNAME", ""),
-        "SMTP_PASSWORD": os.environ.get("SMTP_PASSWORD", ""),
-        "FROM_EMAIL": os.environ.get("FROM_EMAIL", "domaincheck@example.com"),
+        "SMTP_SERVER": "smtp.gmail.com",
+        "SMTP_PORT": "587",
+        "SMTP_USERNAME": "",
+        "SMTP_PASSWORD": "",
+        "FROM_EMAIL": "domaincheck@example.com",
         
         # Application configuration
-        "NOTIFICATION_THRESHOLD_DAYS": os.environ.get("NOTIFICATION_THRESHOLD_DAYS", "30"),
-        "MAX_DOMAINS_PER_CHECK": os.environ.get("MAX_DOMAINS_PER_CHECK", "5"),
-        "APP_HOST": os.environ.get("APP_HOST", "0.0.0.0"),
-        "APP_PORT": os.environ.get("APP_PORT", "8000"),
-        "DEBUG": os.environ.get("DEBUG", "False"),
-        
-        # # GCP specific settings for Memorystore
-        # "GCP_PROJECT": os.environ.get("GCP_PROJECT", ""),
-        # "GCP_REGION": os.environ.get("GCP_REGION", ""),
-        # "MEMORYSTORE_INSTANCE_ID": os.environ.get("MEMORYSTORE_INSTANCE_ID", ""),
+        "NOTIFICATION_THRESHOLD_DAYS": "30",
+        "MAX_DOMAINS_PER_CHECK": "5",
+        "APP_HOST": "0.0.0.0",
+        "APP_PORT": "8000",
+        "DEBUG": "False",
     }
+    
+    # Add all environment variables with defaults when specified
+    for key, default in defaults.items():
+        env_vars[key] = os.environ.get(key, default)
+    
+    # # Add any additional environment variables that start with specific prefixes
+    # # (useful for capturing all related config without explicitly listing each one)
+    # prefixes = ["DOMAIN_", "APP_", "REDIS_", "SMTP_", "GCP_"]
+    for key, value in os.environ.items():
+        #if any(key.startswith(prefix) for prefix in prefixes) and key not in env_vars:
+            env_vars[key] = value
     
     return env_vars
 

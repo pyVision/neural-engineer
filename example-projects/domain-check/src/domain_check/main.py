@@ -19,7 +19,7 @@ from .ssl_check import SSLChecker
 from .notification_handler import NotificationHandler
 from .otp_handler import OTPHandler
 from .init_application import initialization_result
-
+import redis 
 # PostHog configuration
 POSTHOG_API_KEY = os.environ.get("POSTHOG_API_KEY", "your_api_key")
 POSTHOG_HOST = os.environ.get("POSTHOG_HOST", "https://app.posthog.com")
@@ -29,9 +29,17 @@ posthog.api_key = POSTHOG_API_KEY
 posthog.host = POSTHOG_HOST
 
 
+redis_client = redis.Redis(
+                    host=initialization_result["env_vars"]["REDIS_HOST"],
+                    port=initialization_result["env_vars"]["REDIS_PORT"],
+                    password=initialization_result["env_vars"]["REDIS_PASSWORD"],
+                    decode_responses=True,
+                    
+            )
+
 ssl_checker = SSLChecker()
-notification_handler = NotificationHandler()
-otp_handler = OTPHandler()
+notification_handler = NotificationHandler(redis_client=redis_client)
+otp_handler = OTPHandler(redis_client=redis_client)
 
 # Keep the rest of your imports and functions
 import ssl
@@ -118,7 +126,7 @@ from .notification_scheduler import NotificationScheduler
 # Create and run the scheduler
 scheduler = NotificationScheduler()
 
-def scheduled_domain_check():
+async def scheduled_domain_check():
     """
     Run domain and SSL checks for all registered domains in the system.
     This function will be executed on a schedule.
@@ -141,7 +149,7 @@ def scheduled_domain_check():
     
     try:
         # Use the existing method in NotificationHandler that already contains this logic
-        results = scheduler.run_scheduled_check()
+        results = await scheduler.run_scheduled_check()
 
         # Print results summary
         logging.info(f"Check completed at {results['end_time']}")
@@ -207,7 +215,7 @@ async def run_domain_check():
     Returns the results of the check operation.
     """
     try:
-        results = scheduled_domain_check()
+        results = await scheduled_domain_check()
         if results and "error" in results:
             return JSONResponse(
                 status_code=500,
@@ -229,27 +237,31 @@ def run_scheduler():
     Start the background scheduler in a separate process.
     This function starts a scheduler that runs every day at 2 AM.
     """
-    scheduler = BackgroundScheduler()
-    
-    # Run every day at 2 AM
-    scheduler.add_job(
-        scheduled_domain_check,
-        trigger=CronTrigger(hour=2, minute=0),
-        id="domain_check_job",
-        name="Check domain and SSL expirations",
-        replace_existing=True
-    )
-    
-    scheduler.start()
-    logging.info("Background scheduler started for domain checks")
-    
-    try:
-        # Keep the process alive
-        while True:
-            time.sleep(3600)  # Sleep for 1 hour
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        logging.info("Background scheduler stopped")
+    while True:
+
+        scheduler = BackgroundScheduler()
+        
+        # Run every day at 2 AM
+        scheduler.add_job(
+            scheduled_domain_check,
+            trigger=CronTrigger(hour=2, minute=0),
+            id="domain_check_job",
+            name="Check domain and SSL expirations",
+            replace_existing=True,
+            misfire_grace_time=3600  # Allow jobs to be executed up to 1 hour late
+        )
+        
+        scheduler.start()
+        logging.info("Background scheduler started for domain checks")
+        
+        try:
+            # Keep the process alive
+            while True:
+                time.sleep(3600)  # Sleep for 1 hour
+        except (KeyboardInterrupt, SystemExit):
+            scheduler.shutdown()
+            logging.info("Background scheduler stopped")
+            continue
 
 # Start the scheduler in a separate process when the application starts
 def start_background_scheduler():
@@ -336,7 +348,7 @@ async def check_domains_form(request: Request, domains: str = Form(...), thresho
     )
 
     # Process domains and collect results
-    results = check_domains(domains_list, threshold)
+    results = await check_domains(domains_list, threshold)
 
     # Track results
     valid_count = len(results)
@@ -395,7 +407,7 @@ async def check_ssl_form(request: Request, domains: str = Form(...), threshold: 
     ssl_results=[]
     # Process domains and collect SSL certificate results
     for d in domains_list:
-        ss = ssl_checker.check_domain_certificates(d,threshold)
+        ss = await ssl_checker.check_domain_certificates(d,threshold)
         ssl_results.extend(ss)
     
     # Track results: count certificates by status
@@ -1034,6 +1046,16 @@ async def verify_otp(request: OTPVerificationRequest, response: Response):
     """
     try:
         # Verify the OTP
+        from .analytics import track_event, identify_user, get_email_domain
+        identify_user(
+                distinct_id=request.email,
+                properties={
+                    'email_domain': get_email_domain(request.email),
+                    'first_seen_at': datetime.datetime.now().isoformat(),
+                    'last_operation': request.operation
+                }
+            )
+
         success, message = otp_handler.verify_otp(request.email, request.otp)
         logging.info(f"OTP verification for {request.email}: {success}, message: {message}")
         if success:

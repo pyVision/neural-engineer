@@ -11,7 +11,10 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 import idna
-
+from .enhanced_cached import enhanced_cached,custom_key_builder
+from .enhanced_cached import Cache,RedisCache
+from .enhanced_cached import JsonSerializer
+from .init_application import initialization_result
 # Configure logging for the module
 logging.basicConfig(
     level=logging.INFO,
@@ -96,7 +99,20 @@ class SSLChecker:
             
         return list(subdomains)
 
-    def get_certificate_info(self, hostname: str, port: int = 443) -> Optional[Dict]:
+    @enhanced_cached(    
+    ttl=86400,  # 24 hours (60*60*24)
+    cache=Cache.REDIS,
+    track_stats=True,
+    key_builder=custom_key_builder,
+    serializer=JsonSerializer(),
+    namespace=initialization_result["env_vars"]["REDIS_NAMESPACE"],
+    endpoint=initialization_result["env_vars"]["REDIS_HOST"],
+    port=initialization_result["env_vars"]["REDIS_PORT"],
+    password=initialization_result["env_vars"]["REDIS_PASSWORD"],
+    db=initialization_result["env_vars"]["REDIS_DB"],
+    pool_max_size=2                 
+    )
+    async def get_certificate_info(self, hostname: str, port: int = 443) -> Optional[Dict]:
         """
         Get SSL certificate information for a given hostname.
 
@@ -191,7 +207,7 @@ class SSLChecker:
             'expired': True
             }
 
-    def check_domain_certificates(self, domain: str, notification_threshold_days=30) -> List[Dict]:
+    async def check_domain_certificates(self, domain: str, notification_threshold_days=30) -> List[Dict]:
         """
         Check SSL certificates for a domain and all its discovered subdomains.
 
@@ -212,7 +228,7 @@ class SSLChecker:
             # Check certificates for each domain/subdomain
             for d in domains_to_check:
                 print("getting the certificate info for ", d)
-                r1 = self.get_certificate_info(d)
+                r1 = await self.get_certificate_info(d)
                 print(r1)
                 if r1:
                     days_left = r1["days_to_expire"]

@@ -23,6 +23,7 @@ pydantic = {extras = ["email"], version = "^2.11.4"}
 apscheduler = "^3.11.0"
 tldextract = "^5.3.0"
 posthog = "^4.0.1"
+aiocache = "^0.12.3"
 
 
 

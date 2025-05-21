@@ -32,7 +32,7 @@ class NotificationHandler:
     Google Cloud Memorystore for Redis.
     """
     
-    def __init__(self):
+    def __init__(self,redis_client: Optional[redis.Redis] = None):
         """
         Initialize the Redis connection using environment variables.
         
@@ -42,24 +42,30 @@ class NotificationHandler:
             REDIS_PASSWORD: Redis server password (optional)
         """
         try:
-            # Get Redis connection info from environment variables
-            redis_host = os.environ.get("REDIS_HOST", "localhost")
-            redis_port = int(os.environ.get("REDIS_PORT", 6379))
-            redis_password = os.environ.get("REDIS_PASSWORD", None)
-            
-            logger.info(f"Connecting to Redis at {redis_host}:{redis_port}")
-            
-            # Create Redis connection
-            self.redis_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                decode_responses=True
-            )
-            
-            # Test the connection
+            # If a Redis client is provided, use it; otherwise, create a new one
+            if not redis_client:
+                # Get Redis connection info from environment variables
+                redis_host = os.environ.get("REDIS_HOST", "localhost")
+                redis_port = int(os.environ.get("REDIS_PORT", 6379))
+                redis_password = os.environ.get("REDIS_PASSWORD", None)
+                
+                logger.info(f"Connecting to Redis at {redis_host}:{redis_port}")
+                
+                # Create Redis connection
+                self.redis_client = redis.Redis(
+                    host=redis_host,
+                    port=redis_port,
+                    password=redis_password,
+                    decode_responses=True
+                )
+                logger.info(f"Successfully connected to Redis at {redis_host}:{redis_port}")
+                # Test the connection
+            else:
+                self.redis_client= redis_client    
             self.redis_client.ping()
-            logger.info(f"Successfully connected to Redis at {redis_host}:{redis_port}")
+            logger.info(f"Successfully connected to Redis ")
+
+            
         except redis.ConnectionError as e:
             logger.error(f"Failed to connect to Redis: {e}")
             # Don't raise exception here, allow the application to start
@@ -261,7 +267,7 @@ class NotificationHandler:
             logger.error(f"Redis error while retrieving all subscriptions: {e}")
             return []
     
-    def send_immediate_notification(self, email: str, domains: List[str]) -> Dict[str, Any]:
+    async def send_immediate_notification(self, email: str, domains: List[str]) -> Dict[str, Any]:
         """
         Send an immediate domain check notification for newly registered domains.
         
@@ -283,14 +289,14 @@ class NotificationHandler:
             scheduler = NotificationScheduler()
             
             # Check domain expirations
-            domain_results = check_domains(domains, days_threshold)
+            domain_results = await check_domains(domains, days_threshold)
             
             # Check SSL certificates
             ssl_checker = SSLChecker()
             ssl_results = []
             for domain in domains:
                 try:
-                    ssl_certificates = ssl_checker.check_domain_certificates(domain, days_threshold)
+                    ssl_certificates = await ssl_checker.check_domain_certificates(domain, days_threshold)
                     ssl_results.extend(ssl_certificates)
                 except Exception as e:
                     logger.error(f"Error checking SSL for {domain}: {e}")

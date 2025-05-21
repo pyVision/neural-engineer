@@ -29,17 +29,24 @@ class OTPHandler:
     for email authentication during domain registration and viewing.
     """
     
-    def __init__(self):
+    def __init__(self, redis_client: Optional[redis.Redis] = None):
         """Initialize the OTP handler with Redis connection."""
         try:
+
+            # Check if Redis is enabled in environment variables
+            if not redis_client:
             # Connect to Redis based on environment variables
                 # Connect to local Redis instance
-            self.redis_client = redis.Redis(
-                    host=initialization_result["env_vars"]["REDIS_HOST"],
-                    port=initialization_result["env_vars"]["REDIS_PORT"],
-                    password=initialization_result["env_vars"]["REDIS_PASSWORD"],
-                    decode_responses=True
-                )
+                self.redis_client = redis.Redis(
+                        host=initialization_result["env_vars"]["REDIS_HOST"],
+                        port=initialization_result["env_vars"]["REDIS_PORT"],
+                        password=initialization_result["env_vars"]["REDIS_PASSWORD"],
+                        decode_responses=True,
+                        pool_max_size=2
+                    )
+            else:
+                self.redis_client = redis_client
+                
             logger.info("Connected to local Redis")
                 
             # Test the connection

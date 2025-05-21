@@ -54,7 +54,7 @@ class NotificationScheduler:
         if not self.smtp_username or not self.smtp_password:
             logger.warning("SMTP credentials not configured. Email notifications will be logged but not sent.")
         
-    def check_domains_and_notify(self, days_threshold: int = 30) -> List[Dict[str, Any]]:
+    async def check_domains_and_notify(self, days_threshold: int = 30) -> List[Dict[str, Any]]:
         """
         Check all registered domains for expiry and send notifications if needed.
         
@@ -81,12 +81,12 @@ class NotificationScheduler:
             logging.info(f"Checking {len(domains)} domains for {email}")
             
             # Check domain expirations
-            domain_results = check_domains(domains, days_threshold)
+            domain_results = await check_domains(domains, days_threshold)
             
             # Check SSL certificates for each domain
             ssl_results = []
             for domain in domains:
-                ssl_certificates = self.ssl_checker.check_domain_certificates(domain, days_threshold)
+                ssl_certificates = await self.ssl_checker.check_domain_certificates(domain, days_threshold)
                 ssl_results.extend(ssl_certificates)
             
             # Filter domains that are expiring soon
@@ -315,7 +315,7 @@ class NotificationScheduler:
                 "timestamp": datetime.datetime.now().isoformat()
             }
     
-    def run_scheduled_check(self) -> Dict[str, Any]:
+    async def run_scheduled_check(self) -> Dict[str, Any]:
         """
         Run a scheduled check for domain and SSL expiry.
         This method is intended to be called by a scheduler (e.g., cron job).
@@ -329,7 +329,7 @@ class NotificationScheduler:
         threshold = int(os.environ.get("NOTIFICATION_THRESHOLD_DAYS", 30))
         
         # Run the check and send notifications
-        results = self.check_domains_and_notify(threshold)
+        results = await self.check_domains_and_notify(threshold)
         
         end_time = datetime.datetime.now()
         duration = (end_time - start_time).total_seconds()
