@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo.full_name }} - DeepWiki Clone{% endblock %}
+
+{% block content %}
+<div class="repo-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item active">{{ repo.full_name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h1 class="h3 mb-0">
+                    <i class="bi bi-book me-2"></i>
+                    {{ repo.name }}
+                </h1>
+                <a href="https://github.com/{{ repo.full_name }}" target="_blank" class="btn btn-outline-primary">
+                    <i class="bi bi-github me-1"></i> View on GitHub
+                </a>
+            </div>
+            
+            <p class="lead">{{ repo.description }}</p>
+            
+            <div class="repo-stats d-flex flex-wrap">
+                {% if repo.language %}
+                <div class="me-4">
+                    <span class="text-muted">Language:</span>
+                    <span class="fw-bold ms-1">{{ repo.language }}</span>
+                </div>
+                {% endif %}
+                <div class="me-4">
+                    <i class="bi bi-star-fill text-warning me-1"></i>
+                    <span class="fw-bold">{{ repo.stars }}</span>
+                    <span class="text-muted">stars</span>
+                </div>
+                <div class="me-4">
+                    <i class="bi bi-diagram-2 text-primary me-1"></i>
+                    <span class="fw-bold">{{ repo.forks }}</span>
+                    <span class="text-muted">forks</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-3 mb-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Navigation</h5>
+            </div>
+            <div class="list-group list-group-flush" id="repo-navigation">
+                <a href="#overview" class="list-group-item list-group-item-action active">Overview</a>
+                <a href="#readme" class="list-group-item list-group-item-action">README</a>
+                <a href="#structure" class="list-group-item list-group-item-action">Repository Structure</a>
+                <a href="#documentation" class="list-group-item list-group-item-action">Documentation</a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">Similar Repositories</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <!-- This would be populated dynamically in a real implementation -->
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    Similar Repo 1
+                    <span class="badge bg-primary rounded-pill">
+                        <i class="bi bi-star-fill"></i> 2.4k
+                    </span>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    Similar Repo 2
+                    <span class="badge bg-primary rounded-pill">
+                        <i class="bi bi-star-fill"></i> 1.8k
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <div id="overview" class="content-section mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="h4 mb-0">Overview</h2>
+                </div>
+                <div class="card-body">
+                    <p>This is an interactive explorer for the <strong>{{ repo.full_name }}</strong> repository.</p>
+                    <p>You can navigate through the repository structure, view documentation, and access important resources all in one place.</p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        Repository information is fetched directly from GitHub API.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="readme" class="content-section mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="h4 mb-0">README</h2>
+                </div>
+                <div class="card-body">
+                    <div class="readme-content" id="readme-content">
+                        <!-- Placeholder for README content -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Loading README content...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="structure" class="content-section mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="h4 mb-0">Repository Structure</h2>
+                </div>
+                <div class="card-body">
+                    <div id="file-tree">
+                        <!-- Placeholder for file tree structure -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Loading repository structure...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="documentation" class="content-section">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="h4 mb-0">Documentation</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Documentation extraction is a preview feature and may not be complete for all repositories.
+                    </div>
+                    
+                    <div id="documentation-content">
+                        <!-- Placeholder for documentation content -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Extracting documentation...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Simulate loading README content
+        setTimeout(() => {
+            document.getElementById('readme-content').innerHTML = `
+                <h2>{{ repo.name }}</h2>
+                <p>This would be the actual README content fetched from the GitHub API.</p>
+                <p>For a complete implementation, you would fetch the README content from GitHub and render it here.</p>
+            `;
+        }, 1500);
+        
+        // Simulate loading repository structure
+        setTimeout(() => {
+            document.getElementById('file-tree').innerHTML = `
+                <ul class="list-unstyled file-tree">
+                    <li>
+                        <i class="bi bi-folder-fill text-warning"></i>
+                        <span class="fw-bold">src/</span>
+                        <ul class="list-unstyled ms-4">
+                            <li>
+                                <i class="bi bi-file-earmark-code"></i>
+                                index.js
+                            </li>
+                            <li>
+                                <i class="bi bi-file-earmark-code"></i>
+                                app.js
+                            </li>
+                        </ul>
+                    </li>
+                    <li>
+                        <i class="bi bi-folder-fill text-warning"></i>
+                        <span class="fw-bold">docs/</span>
+                        <ul class="list-unstyled ms-4">
+                            <li>
+                                <i class="bi bi-file-earmark-text"></i>
+                                README.md
+                            </li>
+                        </ul>
+                    </li>
+                    <li>
+                        <i class="bi bi-file-earmark-text"></i>
+                        README.md
+                    </li>
+                    <li>
+                        <i class="bi bi-file-earmark"></i>
+                        package.json
+                    </li>
+                </ul>
+            `;
+        }, 2000);
+        
+        // Simulate loading documentation
+        setTimeout(() => {
+            document.getElementById('documentation-content').innerHTML = `
+                <h3>API Documentation</h3>
+                <p>This would be the extracted documentation from the repository.</p>
+                <pre class="bg-light p-3 rounded">
+function example(param) {
+  // Example function documentation
+  return param;
+}
+                </pre>
+            `;
+        }, 2500);
+        
+        // Smooth scrolling for navigation
+        const navLinks = document.querySelectorAll('#repo-navigation a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all links
+                navLinks.forEach(l => l.classList.remove('active'));
+                // Add active class to clicked link
+                this.classList.add('active');
+                
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                window.scrollTo({
+                    top: targetElement.offsetTop - 20,
+                    behavior: 'smooth'
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

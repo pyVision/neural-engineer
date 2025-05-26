@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}DeepWiki{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+    <h2 class="mb-4">Which repo would you like to understand?</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <form id="search-form" class="mb-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input id="search-input" class="form-control border-start-0" type="search" placeholder="Search for repositories (or paste a link)" aria-label="Search">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4" id="repositories-container">
+    <!-- Add repo card -->
+    <div class="col-md-4 col-lg-3 mb-3">
+        <div class="card h-100 text-center repo-card add-repo" data-bs-toggle="modal" data-bs-target="#addRepositoryModal" style="cursor: pointer;">
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                <div class="mb-3 mt-3 fs-3">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <h6 class="card-title">Add repo</h6>
+            </div>
+        </div>
+    </div>
+    
+    {% for repo in repos %}
+    <div class="col-md-4 col-lg-3 mb-3">
+        <div class="card h-100 repo-card {% if repo.is_default %}default-repo border-light{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="card-title mb-0">
+                        <a href="/repo/{{ repo.owner }}/{{ repo.name }}" class="text-decoration-none">
+                            {{ repo.owner }} / {{ repo.name }}
+                        </a>
+                    </h6>
+                    {% if repo.is_default %}
+                    <span class="badge bg-light text-secondary default-badge" title="Default repository">
+                        <i class="bi bi-lock"></i> Default
+                    </span>
+                    {% else %}
+                    <button class="btn btn-sm btn-outline-danger remove-repo" 
+                            data-owner="{{ repo.owner }}" 
+                            data-name="{{ repo.name }}"
+                            title="Remove repository">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                <p class="card-text text-muted small mb-2">{{ repo.description }}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if repo.language %}
+                        <span class="badge bg-light text-secondary small">{{ repo.language }}</span>
+                        {% endif %}
+                        <span class="text-muted small ms-1">
+                            <i class="bi bi-star-fill text-warning"></i> {{ repo.stars }}
+                        </span>
+                        {% if repo.forks %}
+                        <span class="text-muted small ms-2">
+                            <i class="bi bi-diagram-2"></i> {{ repo.forks }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="search-results" class="d-none mb-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h2 class="h4">Search Results <button id="clear-search" class="btn btn-sm btn-outline-secondary">Clear</button></h2>
+        </div>
+    </div>
+    <div id="search-results-container" class="row"></div>
+</div>
+
+<div class="row mt-5" id="about">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h4 card-title">About Wiki-ai </h2>
+                <p>Wiki-ai is a modern tool designed to assist developers in exploring GitHub repositories, understanding their popularity, adoption, structure, and accessing documentation more efficiently.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Dialog -->
+<div class="modal fade" id="progressDialog" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="progressDialogLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="mb-2" id="progressDialogText">Processing...</h5>
+                <p class="text-muted small mb-2" id="progressDialogSubText"></p>
+                <div class="progress" style="height: 3px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="confirmationModalLabel">Remove Repository</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center pb-4">
+                <div class="mb-4">
+                    <i class="bi bi-exclamation-circle text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="mb-3" id="confirmationText">Are you sure you want to remove this repository?</h5>
+                <p class="text-muted mb-0" id="repoFullName"></p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmRemove">Remove</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const repositoriesContainer = document.getElementById('repositories-container');
+    const searchResults = document.getElementById('search-results');
+    const searchResultsContainer = document.getElementById('search-results-container');
+    const clearSearchButton = document.getElementById('clear-search');
+    const progressDialog = new bootstrap.Modal(document.getElementById('progressDialog'), {
+        backdrop: 'static',
+        keyboard: false
+    });
+    const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    let repoToRemove = null;
+    
+    // Parse GitHub URLs from search input
+    searchForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        // Check if input is a GitHub URL
+        const urlMatch = query.match(/github\.com\/([^/]+)\/([^/]+)/);
+        if (urlMatch) {
+            const [, owner, name] = urlMatch;
+            // Show progress dialog immediately
+            document.getElementById('progressDialogText').textContent = 'Adding repository...';
+            progressDialog.show();
+            
+            await addRepository(owner, name.replace(/\.git$/, ''));
+            return;
+        }
+
+        try {
+            document.getElementById('progressDialogText').textContent = 'Searching repositories...';
+            progressDialog.show();
+            
+            const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+            const results = await response.json();
+
+            progressDialog.hide();
+
+            if (results.length > 0) {
+                displaySearchResults(results);
+            } else {
+                searchResultsContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">No repositories found matching your search.</div></div>';
+                searchResults.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Error searching repositories:', error);
+            progressDialog.hide();
+            alert('Error searching repositories. Please try again.');
+        }
+    });
+
+    clearSearchButton.addEventListener('click', function() {
+        searchInput.value = '';
+        searchResults.classList.add('d-none');
+    });
+
+    async function updateProgressDialog(message, subMessage = '') {
+        document.getElementById('progressDialogText').textContent = message;
+        document.getElementById('progressDialogSubText').textContent = subMessage;
+    }
+
+    async function addRepository(owner, name, button = null) {
+        try {
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+            }
+            
+            progressDialog.show();
+            await updateProgressDialog('Verifying repository...', `${owner}/${name}`);
+            
+            const response = await fetch('/repo/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `owner=${encodeURIComponent(owner)}&name=${encodeURIComponent(name)}`
+            });
+            
+            if (response.ok) {
+                await updateProgressDialog('Fetching repository details...', `${owner}/${name}`);
+                
+                if (button) {
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                    button.innerHTML = '<i class="bi bi-check"></i> Added';
+                }
+                
+                // Fetch the newly added repository data
+                const repoResponse = await fetch(`/repo/${owner}/${name}/data`);
+                if (repoResponse.ok) {
+                    const repoData = await repoResponse.json();
+                    await updateProgressDialog('Adding to your list...', 'This may take a moment');
+                    
+                    // Small delay to show the success state
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    await updateProgressDialog('Success!', 'Repository added successfully');
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    
+                    // Instead of directly updating the UI, refresh the page to get the updated list
+                    window.location.reload();
+                }
+            } else {
+                const data = await response.json();
+                if (button) {
+                    button.innerHTML = 'Add';
+                    button.disabled = false;
+                }
+                throw new Error(data.detail || 'Failed to add repository');
+            }
+        } catch (error) {
+            console.error('Error adding repository:', error);
+            if (button) {
+                button.innerHTML = 'Add';
+                button.disabled = false;
+            }
+            await updateProgressDialog('Error', error.message);
+            document.getElementById('progressDialogText').classList.add('text-danger');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } finally {
+            document.getElementById('progressDialogText').classList.remove('text-danger');
+            // Progress dialog will be automatically hidden on page refresh
+        }
+    }
+
+    // Modify displaySearchResults to use the same progress feedback
+    function displaySearchResults(repos) {
+        searchResultsContainer.innerHTML = '';
+        repos.forEach(repo => {
+            const repoCard = document.createElement('div');
+            repoCard.className = 'col-md-6 col-lg-4 mb-4';
+            repoCard.innerHTML = `
+                <div class="card h-100 shadow-sm ${repo.is_default ? 'default-repo' : ''}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">
+                                <a href="/repo/${repo.owner}/${repo.name}" class="text-decoration-none">
+                                    ${repo.full_name}
+                                </a>
+                            </h5>
+                            ${repo.is_default ? 
+                                '<span class="badge bg-light text-secondary default-badge" title="Default repository"><i class="bi bi-lock"></i> Default</span>' :
+                                (repo.is_added ? 
+                                    '<span class="badge bg-success">Added</span>' :
+                                    `<button class="btn btn-sm btn-primary add-repo-btn" 
+                                        data-owner="${repo.owner}" 
+                                        data-name="${repo.name}">
+                                        <i class="bi bi-plus-circle me-1"></i>Add
+                                    </button>`
+                                )
+                            }
+                        </div>
+                        <p class="card-text text-muted small">${repo.description || ''}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                ${repo.language ? `<span class="badge bg-light text-secondary small">${repo.language}</span>` : ''}
+                                <span class="text-muted small ms-1">
+                                    <i class="bi bi-star-fill me-1 text-warning"></i> ${repo.stars}
+                                </span>
+                                <span class="text-muted small ms-2">
+                                    <i class="bi bi-diagram-2 me-1"></i> ${repo.forks}
+                                </span>
+                            </div>
+                            <div>
+                                ${!repo.is_default && !repo.is_added ? 
+                                    `<button class="btn btn-sm btn-outline-danger remove-repo me-2" 
+                                        data-owner="${repo.owner}" 
+                                        data-name="${repo.name}"
+                                        title="Remove repository">
+                                        <i class="bi bi-x"></i>
+                                    </button>` : ''}
+                                <a href="/repo/${repo.owner}/${repo.name}" class="btn btn-sm btn-outline-secondary">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add click handler for the add button if repo is not already added and not default
+            if (!repo.is_added && !repo.is_default) {
+                const addButton = repoCard.querySelector('.add-repo-btn');
+                if (addButton) {
+                    addButton.addEventListener('click', function() {
+                        addRepository(repo.owner, repo.name, this);
+                    });
+                }
+            }
+            searchResultsContainer.appendChild(repoCard);
+        });
+        searchResults.classList.remove('d-none');
+    }
+
+    // Handle repository removal
+    document.addEventListener('click', async function(e) {
+        const removeButton = e.target.closest('.remove-repo');
+        if (!removeButton) return;
+        
+        e.preventDefault();
+        const owner = removeButton.dataset.owner;
+        const name = removeButton.dataset.name;
+        
+        // Store the repo info and button reference
+        repoToRemove = { owner, name, button: removeButton };
+        
+        // Update confirmation modal content
+        document.getElementById('repoFullName').textContent = `${owner}/${name}`;
+        
+        // Show confirmation modal
+        confirmationModal.show();
+    });
+
+    // Handle confirmation modal remove button
+    document.getElementById('confirmRemove').addEventListener('click', async function() {
+        if (!repoToRemove) return;
+        
+        confirmationModal.hide();
+        try {
+            document.getElementById('progressDialogText').textContent = 'Removing repository...';
+            progressDialog.show();
+            
+            const response = await fetch(`/repo/remove`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `owner=${encodeURIComponent(repoToRemove.owner)}&name=${encodeURIComponent(repoToRemove.name)}`
+            });
+            
+            if (response.ok) {
+                // Show success message in progress dialog
+                document.getElementById('progressDialogText').textContent = 'Repository removed successfully';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Remove the card from the UI with animation
+                const card = repoToRemove.button.closest('.col-md-4');
+                card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    card.remove();
+                }, 300);
+            } else {
+                const data = await response.json();
+                throw new Error(data.detail || 'Failed to remove repository');
+            }
+        } catch (error) {
+            console.error('Error removing repository:', error);
+            // Show error in a custom alert
+            document.getElementById('progressDialogText').textContent = `Error: ${error.message}`;
+            document.getElementById('progressDialogText').classList.add('text-danger');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } finally {
+            progressDialog.hide();
+            document.getElementById('progressDialogText').classList.remove('text-danger');
+            repoToRemove = null;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+.repo-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.repo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.1);
+}
+
+.repo-card.border-light {
+    border-style: dashed;
+}
+
+.repo-card.default-repo {
+    cursor: default;
+    opacity: 0.85;
+    background-color: #f8f9fa;
+}
+
+.repo-card.default-repo:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.default-badge {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    border: 1px solid #dee2e6;
+    cursor: not-allowed;
+}
+
+.remove-repo {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.repo-card:hover .remove-repo {
+    opacity: 1;
+}
+
+.badge.bg-light {
+    border: 1px solid #dee2e6;
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+}
