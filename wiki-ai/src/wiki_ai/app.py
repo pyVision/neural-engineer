@@ -176,13 +176,31 @@ async def home(request: Request):
     """
     # Get all repositories (both remote and default) using data controller
     data_controller = get_data_controller()
-    all_repos = await data_controller.get_all_repositories(DEFAULT_REPOS)
-    
-    # Fetch additional data for each repository
+    all_repos = await data_controller.get_all_repositories()
     repos = []
+    # Add is_default property based on whether it's in DEFAULT_REPOS
     for repo in all_repos:
-        repo_data = await fetch_repo_data(repo["owner"], repo["name"])
+            repo_data = await fetch_repo_data(repo["owner"], repo["name"])
+            for d in DEFAULT_REPOS: 
+                print(d,repo)
+                if d["owner"] == repo["owner"] and d["name"] == repo["name"]:
+                    #repo_data["description"] = d.get("description", repo_data.get("description", ""))
+                    repo_data["is_default"] = True
+                    #repo_data["description"] = d.get("description", repo_data["description"])
+                    break
+
+            if not repo_data.get("is_default", False):
+                repos.append(repo_data)
+
+    # Fetch additional data for each repository
+    
+    for d in DEFAULT_REPOS: 
+        repo_data = await fetch_repo_data(d["owner"], d["name"])
+        repo_data["description"] = d.get("description", repo_data.get("description", ""))
+        repo_data["is_default"] = True  # Mark 
         repos.append(repo_data)
+        
+
     
     return templates.TemplateResponse("index.html", {"request": request, "repos": repos})
 

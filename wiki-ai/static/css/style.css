@@ -29,6 +29,45 @@
     color: #6c757d !important;
     border: 1px solid #dee2e6;
     cursor: not-allowed;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.default-badge i {
+    font-size: 0.85em;
+}
+
+.repo-card.default-repo {
+    background-color: #f8f9fa;
+    opacity: 0.85;
+}
+
+.repo-card.default-repo .card-body {
+    position: relative;
+}
+
+.repo-card.default-repo .card-body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0,0,0,0.01) 10px,
+        rgba(0,0,0,0.01) 20px
+    );
+    pointer-events: none;
+}
+
+.remove-repo[data-default="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .remove-repo {
