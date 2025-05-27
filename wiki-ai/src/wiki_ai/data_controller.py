@@ -99,35 +99,36 @@ class Cache:
 
 
     async def get_from_cache(self, key: str):
+        """Get value from cache"""
         try:
-            return await self.cache.get(key)
-        except Exception:
-            logger.exception("Couldn't retrieve %s, unexpected error", key)
-        return None
-    
-    async def _update_ttl(self, key, ttl):
-        """Update TTL for an existing cache entry without blocking"""
-        try:
-            # Update expiration time for the key
-            await self.cache.expire(key, ttl)
-        except Exception:
-            logger.exception("Couldn't update TTL for key %s", key)
-
-    async def set_in_cache(self, key, value, ttl=None):
-        """Enhanced cache setter with dynamic TTL support"""
-        try:
-            #print("Setting in cache", key, value)
-            ttl = ttl if ttl is not None else self.ttl
-            if ttl is None:
-                await self.cache.set(key, value)
-            else:
-                await self.cache.set(key, value, ex=ttl)
+            value = await self.cache.get(key)
+            if value:
+                return JsonSerializer.deserialize(value)
         except Exception as e:
-            #import traceback
-            #traceback.print_exc()
-            #logger.error("Error setting cache for key %s: %s", key, traceback.format_exc())
-            logger.exception("Couldn't set %s in key %s, unexpected error", value, key)
-            pass
+            self.logger.error(f"Error getting value from cache: {str(e)}")
+        return None
+
+    async def set_in_cache(self, key: str, value: any, ttl: Optional[int] = None):
+        """Set value in cache with optional TTL"""
+        try:
+            serialized_value = JsonSerializer.serialize(value)
+            ttl1=ttl or self.ttl
+            if ttl1:
+                await self.cache.set(key, serialized_value, ex=ttl1)
+            else:
+                await self.cache.set(key, serialized_value)
+        except Exception as e:
+            self.logger.error(f"Error setting value in cache: {str(e)}")
+
+    async def get_repo_data(self, owner: str, name: str) -> Optional[Dict]:
+        """Get repository data from cache"""
+        cache_key = f"repo_data:{owner}:{name}"
+        return await self.get_from_cache(cache_key)
+
+    async def set_repo_data(self, owner: str, name: str, data: Dict):
+        """Set repository data in cache"""
+        cache_key = f"repo_data:{owner}:{name}"
+        await self.set_in_cache(cache_key, data)  # Cache for 1 hour
 
 
 
@@ -159,20 +160,22 @@ class DataAccessController:
         """
         remote_repos = await self.get_added_repositories()
         
+        
         default_repos1 = []
         # Convert DEFAULT_REPOS to the same format as remote repos
-        if default_repos is not None:
-            default_repos1 = [{"owner": repo["owner"], "name": repo["name"]} for repo in default_repos]
+        # if default_repos is not None:
+        #     default_repos1 = [{"owner": repo["owner"], "name": repo["name"]} for repo in default_repos]
         
-        # Filter out default repos that are already in remote repos
-        filtered_default_repos = [
-            repo for repo in default_repos1 
-            if not any(r["owner"] == repo["owner"] and r["name"] == repo["name"] 
-                      for r in remote_repos)
-        ]
-        
+        # # Filter out default repos that are already in remote repos
+        # filtered_default_repos = [
+        #     repo for repo in default_repos1 
+        #     if not any(r["owner"] == repo["owner"] and r["name"] == repo["name"] 
+        #               for r in remote_repos)
+        # ]
+        if remote_repos is None:
+            remote_repos = []
         # Return remote repos first, followed by filtered default repos
-        return remote_repos + filtered_default_repos
+        return remote_repos 
 
     async def add_repository(self, owner: str, name: str) -> bool:
         """
@@ -183,14 +186,16 @@ class DataAccessController:
         all_repos = await self.get_all_repositories()
         if any(r["owner"] == owner and r["name"] == name for r in all_repos):
             return False
-        
+        remote_repos=[]
         # Get current remote repos and append new one
         remote_repos = await self.get_added_repositories()
+        if remote_repos is None:
+            remote_repos=[]
         remote_repos.append({"owner": owner, "name": name})
         
         # Save updated remote repos
-        serialized_data = self.serializer.serialize(remote_repos)
-        await self.cache.set_in_cache(self.ADDED_REPOS_KEY, serialized_data)
+        #serialized_data = self.serializer.serialize(remote_repos)
+        await self.cache.set_in_cache(self.ADDED_REPOS_KEY, remote_repos)
         return True
 
     async def get_added_repositories(self) -> List[Dict[str, str]]:
@@ -199,9 +204,10 @@ class DataAccessController:
         Returns list of dicts with owner and name
         """
         data = await self.cache.get_from_cache(self.ADDED_REPOS_KEY)
-        if data:
-            return self.serializer.deserialize(data)
-        return []
+        print(f"Data from cache: {data}")
+        # if data:
+        #     return self.serializer.deserialize(data)
+        return data
 
     async def remove_repository(self, owner: str, name: str) -> bool:
         """
@@ -214,8 +220,8 @@ class DataAccessController:
         remote_repos = [r for r in remote_repos if not (r["owner"] == owner and r["name"] == name)]
         
         if len(remote_repos) < initial_length:
-            serialized_data = self.serializer.serialize(remote_repos)
-            await self.cache.set_in_cache(self.ADDED_REPOS_KEY, serialized_data)
+            #serialized_data = self.serializer.serialize(remote_repos)
+            await self.cache.set_in_cache(self.ADDED_REPOS_KEY, remote_repos)
             return True
         return False
 
@@ -232,7 +238,12 @@ class DataAccessController:
         except Exception:
             return False
 
-#@lru_cache()
-def get_data_controller() -> DataAccessController:
+# Module-level instance
+_data_controller_instance = None
+
+async def get_data_controller() -> DataAccessController:
     """Singleton pattern for DataAccessController"""
-    return DataAccessController()
+    global _data_controller_instance
+    if _data_controller_instance is None:
+        _data_controller_instance = DataAccessController()
+    return _data_controller_instance

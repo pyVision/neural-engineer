@@ -71,9 +71,16 @@ logger = logging.getLogger(__name__)
 
 async def fetch_repo_data(owner: str, name: str) -> Dict:
     """
-    Fetch repository data from GitHub API
+    Fetch repository data from GitHub API or cache
     """
-    logger.info(f"Fetching repository data for {owner}/{name}")
+    # Try to get data from cache first
+    data_controller = await get_data_controller()
+    cached_data = await data_controller.cache.get_repo_data(owner, name)
+    if cached_data:
+        print(f"Retrieved repository data from cache for {owner}/{name}")
+        return cached_data
+
+    logger.info(f"Fetching repository data from GitHub API for {owner}/{name}")
     headers = {}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
@@ -101,7 +108,9 @@ async def fetch_repo_data(owner: str, name: str) -> Dict:
             
             data = response.json()
             logger.info(f"Successfully fetched data for {owner}/{name}")
-            return {
+            
+            # Format the repository data
+            repo_data = {
                 "owner": owner,
                 "name": name,
                 "full_name": data.get("full_name", f"{owner}/{name}"),
@@ -111,6 +120,12 @@ async def fetch_repo_data(owner: str, name: str) -> Dict:
                 "language": data.get("language", ""),
                 "error": False
             }
+            
+            # Cache the successfully fetched data
+            await data_controller.cache.set_repo_data(owner, name, repo_data)
+            logger.info(f"Cached repository data for {owner}/{name}")
+            
+            return repo_data
         except httpx.TimeoutException:
             logger.error(f"Timeout while fetching repository data for {owner}/{name}")
             return {
@@ -175,22 +190,25 @@ async def home(request: Request):
     Home page route handler
     """
     # Get all repositories (both remote and default) using data controller
-    data_controller = get_data_controller()
+    data_controller = await get_data_controller()
     all_repos = await data_controller.get_all_repositories()
     repos = []
     # Add is_default property based on whether it's in DEFAULT_REPOS
-    for repo in all_repos:
-            repo_data = await fetch_repo_data(repo["owner"], repo["name"])
-            for d in DEFAULT_REPOS: 
-                print(d,repo)
-                if d["owner"] == repo["owner"] and d["name"] == repo["name"]:
-                    #repo_data["description"] = d.get("description", repo_data.get("description", ""))
-                    repo_data["is_default"] = True
-                    #repo_data["description"] = d.get("description", repo_data["description"])
-                    break
+    print(all_repos)
+    if all_repos is not None:
+        for repo in all_repos:
+                print("AAAA",repo)
+                repo_data = await fetch_repo_data(repo["owner"], repo["name"])
+                for d in DEFAULT_REPOS: 
+                    print(d,repo)
+                    if d["owner"] == repo["owner"] and d["name"] == repo["name"]:
+                        #repo_data["description"] = d.get("description", repo_data.get("description", ""))
+                        repo_data["is_default"] = True
+                        #repo_data["description"] = d.get("description", repo_data["description"])
+                        break
 
-            if not repo_data.get("is_default", False):
-                repos.append(repo_data)
+                if not repo_data.get("is_default", False):
+                    repos.append(repo_data)
 
     # Fetch additional data for each repository
     
@@ -217,7 +235,7 @@ async def add_repository(payload: RepoRequest):
     Add a repository API endpoint
     """
     try:
-        data_controller = get_data_controller()
+        data_controller = await get_data_controller()
 
         print(f"Adding repository: {payload.owner}/{payload.name}")
         # Verify repository exists on GitHub before adding
@@ -251,7 +269,7 @@ async def remove_repository(request: Request):
     if not owner or not name:
         raise HTTPException(status_code=400, detail="Missing owner or name parameter")
     
-    data_controller = get_data_controller()
+    data_controller = await get_data_controller()
     success = await data_controller.remove_repository(owner, name)
     if not success:
         raise HTTPException(status_code=404, detail="Repository not found or is a default repository")
@@ -271,9 +289,10 @@ async def search(q: Optional[str] = Query(None)):
     results = await search_repositories(q)
     
     # Get existing repositories to mark which ones are already added
-    data_controller = get_data_controller()
+    data_controller = await get_data_controller()
     existing_repos = await data_controller.get_all_repositories(DEFAULT_REPOS)
-    
+    if existing_repos is None:
+        existing_repos = []
     # Add a flag to indicate if repository is already in our system
     for result in results:
         result["is_added"] = any(
@@ -302,7 +321,7 @@ async def repository_index():
     """
     Get index of all repositories in the system
     """
-    data_controller = get_data_controller()
+    data_controller = await get_data_controller()
     repos = await data_controller.get_all_repositories()
     return {
         "repositories": repos,
