@@ -20,6 +20,7 @@ import logging
 
 
 from wiki_ai.data_controller import get_data_controller
+from wiki_ai.visualization_service import get_visualization_service
 
 # Load environment variables
 load_dotenv()
@@ -306,14 +307,28 @@ async def search(q: Optional[str] = Query(None)):
 @app.get("/repo/{owner}/{name}", response_class=HTMLResponse)
 async def repo_details(request: Request, owner: str, name: str):
     """
-    Repository details page
+    Repository details page with visualization support
     """
     repo_data = await fetch_repo_data(owner, name)
     
     if repo_data.get("error", False):
         raise HTTPException(status_code=404, detail="Repository not found or API rate limit exceeded")
     
-    return templates.TemplateResponse("repo.html", {"request": request, "repo": repo_data})
+    # Get visualization status
+    viz_service = get_visualization_service()
+    viz_status = await viz_service.get_visualization_status(owner, name)
+    
+    # If no plots exist and no job is running, initiate background generation
+    if viz_status["status"] == "none":
+        await viz_service.initiate_background_generation(owner, name)
+        # Update status after initiating job
+        viz_status = await viz_service.get_visualization_status(owner, name)
+    
+    return templates.TemplateResponse("repo.html", {
+        "request": request, 
+        "repo": repo_data,
+        "visualization": viz_status
+    })
 
 
 @app.get("/repo/index")
@@ -338,6 +353,54 @@ async def get_repository_data(owner: str, name: str):
     if repo_data.get("error", False):
         raise HTTPException(status_code=404, detail="Repository not found")
     return repo_data
+
+
+@app.get("/repo/{owner}/{name}/visualization/status")
+async def get_visualization_status(owner: str, name: str):
+    """
+    Get visualization status for a repository
+    """
+    viz_service = get_visualization_service()
+    status = await viz_service.get_visualization_status(owner, name)
+    return status
+
+
+@app.post("/repo/{owner}/{name}/visualization/generate")
+async def generate_visualizations(owner: str, name: str):
+    """
+    Manually trigger visualization generation
+    """
+    viz_service = get_visualization_service()
+    
+    # Check if repository exists
+    repo_data = await fetch_repo_data(owner, name)
+    if repo_data.get("error", False):
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    # Initiate background generation
+    job_started = await viz_service.initiate_background_generation(owner, name)
+    
+    if job_started:
+        return {"status": "success", "message": "Visualization generation started"}
+    else:
+        return {"status": "info", "message": "Visualization generation already in progress"}
+
+
+@app.get("/repo/{owner}/{name}/visualization/job")
+async def get_job_status(owner: str, name: str):
+    """
+    Get detailed job status for visualization generation
+    """
+    viz_service = get_visualization_service()
+    
+    data_controller = await get_data_controller()
+    job_key = f"{viz_service.JOBS_KEY_PREFIX}:{owner}:{name}"
+    
+    job_data = await data_controller.cache.get_from_cache(job_key)
+    if job_data:
+        return job_data
+    else:
+        return {"status": "none", "message": "No job found"}
 
 
 def run():

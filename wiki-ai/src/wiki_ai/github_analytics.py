@@ -29,10 +29,24 @@ class GitHubAnalytics:
         -----------
         github_token : str, optional
             GitHub personal access token. If not provided, will try to get from
-            environment variable GITHUB_TOKEN or prompt user for input.
+            environment variable GITHUB_TOKEN. If still not found, will use
+            unauthenticated access with rate limits.
         """
-        self.github_token = github_token or os.environ.get('GITHUB_TOKEN') or getpass.getpass('Enter your GitHub token: ')
-        self.github_client = Github(self.github_token)
+        self.github_token = github_token or os.environ.get('GITHUB_TOKEN')
+        
+        if self.github_token:
+            self.github_client = Github(self.github_token)
+            print("GitHub client initialized with authentication")
+        else:
+            self.github_client = Github()
+            print("GitHub client initialized without authentication (rate limited)")
+        
+        # Test the connection
+        try:
+            rate_limit = self.github_client.get_rate_limit()
+            print(f"API rate limit: {rate_limit.core.remaining}/{rate_limit.core.limit}")
+        except Exception as e:
+            print(f"Warning: Could not check rate limit: {e}")
 
     def fetch_repo_data(self, repo_name):
         """
