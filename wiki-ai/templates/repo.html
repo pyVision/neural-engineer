@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ repo.full_name }} - DeepWiki Clone{% endblock %}
+{% block title %}{{ repo.full_name }} - Wiki-ai{% endblock %}
 
 {% block content %}
 <div class="repo-header mb-4">
@@ -55,18 +55,17 @@
             </div>
             <div class="list-group list-group-flush" id="repo-navigation">
                 <a href="#overview" class="list-group-item list-group-item-action active">Overview</a>
-                <a href="#readme" class="list-group-item list-group-item-action">README</a>
-                <a href="#structure" class="list-group-item list-group-item-action">Repository Structure</a>
-                <a href="#documentation" class="list-group-item list-group-item-action">Documentation</a>
+                <a href="#visualizations" class="list-group-item list-group-item-action">Visualizations</a>
             </div>
         </div>
 
+        <!-- Similar Repositories section commented out -->
+        <!--
         <div class="card shadow-sm">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">Similar Repositories</h5>
             </div>
             <div class="list-group list-group-flush">
-                <!-- This would be populated dynamically in a real implementation -->
                 <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     Similar Repo 1
                     <span class="badge bg-primary rounded-pill">
@@ -81,6 +80,7 @@
                 </a>
             </div>
         </div>
+        -->
     </div>
     
     <div class="col-lg-9">
@@ -100,6 +100,128 @@
             </div>
         </div>
         
+        <div id="visualizations" class="content-section mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h2 class="h4 mb-0">Repository Analytics & Visualizations</h2>
+                    <button id="refresh-viz-btn" class="btn btn-sm btn-outline-primary" onclick="refreshVisualizations(true)">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="visualization-content">
+                        {% if visualization.status == 'available' %}
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                                {{ visualization.message }}
+                            </div>
+                            
+                            <!-- Timeline Visualization -->
+                            {% if visualization.has_timeline %}
+                            <div class="visualization-section mb-4">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-graph-up me-2"></i>Stars & Forks Timeline
+                                </h5>
+                                <div class="plot-container">
+                                    <img src="{{ visualization.plot_urls.timeline }}" 
+                                         alt="Repository Timeline" 
+                                         class="img-fluid rounded border"
+                                         style="max-width: 100%; height: auto;">
+                                </div>
+                                {% if visualization.plot_urls.timeline_html %}
+                                <div class="mt-2">
+                                    <a href="{{ visualization.plot_urls.timeline_html }}" 
+                                       target="_blank" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        Open Interactive Plot
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Activity Heatmap -->
+                            {% if visualization.has_heatmap %}
+                            <div class="visualization-section mb-4">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-calendar-heat me-2"></i>Activity Heatmap
+                                </h5>
+                                <div class="plot-container">
+                                    <img src="{{ visualization.plot_urls.heatmap }}" 
+                                         alt="Activity Heatmap" 
+                                         class="img-fluid rounded border"
+                                         style="max-width: 100%; height: auto;">
+                                </div>
+                                {% if visualization.plot_urls.heatmap_html %}
+                                <div class="mt-2">
+                                    <a href="{{ visualization.plot_urls.heatmap_html }}" 
+                                       target="_blank" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        Open Interactive Plot
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                        {% elif visualization.status == 'generating' %}
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center">
+                                    <div class="spinner-border spinner-border-sm me-3" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <div>
+                                        <strong>{{ visualization.message }}</strong>
+                                        <div class="mt-2">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                     role="progressbar" 
+                                                     style="width: 0%"
+                                                     id="progress-bar">
+                                                    <span id="progress-text">0%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-1 d-block" id="job-message">
+                                            Initializing...
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        {% elif visualization.status == 'failed' %}
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                {{ visualization.message }}
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="retryVisualization()">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>
+                                        Retry Generation
+                                    </button>
+                                </div>
+                            </div>
+                            
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-clock me-2"></i>
+                                Generating visualizations for this repository...
+                                <div class="mt-2">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span>This may take a few minutes depending on repository size.</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- README section commented out -->
+        <!--
         <div id="readme" class="content-section mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -107,7 +229,6 @@
                 </div>
                 <div class="card-body">
                     <div class="readme-content" id="readme-content">
-                        <!-- Placeholder for README content -->
                         <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
@@ -118,7 +239,10 @@
                 </div>
             </div>
         </div>
+        -->
         
+        <!-- Repository Structure section commented out -->
+        <!--
         <div id="structure" class="content-section mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -126,7 +250,6 @@
                 </div>
                 <div class="card-body">
                     <div id="file-tree">
-                        <!-- Placeholder for file tree structure -->
                         <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
@@ -137,7 +260,10 @@
                 </div>
             </div>
         </div>
+        -->
         
+        <!-- Documentation section commented out -->
+        <!--
         <div id="documentation" class="content-section">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -150,7 +276,6 @@
                     </div>
                     
                     <div id="documentation-content">
-                        <!-- Placeholder for documentation content -->
                         <div class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
@@ -161,75 +286,23 @@
                 </div>
             </div>
         </div>
+        -->
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    let jobPollingInterval;
+    const repoOwner = '{{ repo.owner }}';
+    const repoName = '{{ repo.name }}';
+    
     document.addEventListener('DOMContentLoaded', function() {
-        // Simulate loading README content
-        setTimeout(() => {
-            document.getElementById('readme-content').innerHTML = `
-                <h2>{{ repo.name }}</h2>
-                <p>This would be the actual README content fetched from the GitHub API.</p>
-                <p>For a complete implementation, you would fetch the README content from GitHub and render it here.</p>
-            `;
-        }, 1500);
-        
-        // Simulate loading repository structure
-        setTimeout(() => {
-            document.getElementById('file-tree').innerHTML = `
-                <ul class="list-unstyled file-tree">
-                    <li>
-                        <i class="bi bi-folder-fill text-warning"></i>
-                        <span class="fw-bold">src/</span>
-                        <ul class="list-unstyled ms-4">
-                            <li>
-                                <i class="bi bi-file-earmark-code"></i>
-                                index.js
-                            </li>
-                            <li>
-                                <i class="bi bi-file-earmark-code"></i>
-                                app.js
-                            </li>
-                        </ul>
-                    </li>
-                    <li>
-                        <i class="bi bi-folder-fill text-warning"></i>
-                        <span class="fw-bold">docs/</span>
-                        <ul class="list-unstyled ms-4">
-                            <li>
-                                <i class="bi bi-file-earmark-text"></i>
-                                README.md
-                            </li>
-                        </ul>
-                    </li>
-                    <li>
-                        <i class="bi bi-file-earmark-text"></i>
-                        README.md
-                    </li>
-                    <li>
-                        <i class="bi bi-file-earmark"></i>
-                        package.json
-                    </li>
-                </ul>
-            `;
-        }, 2000);
-        
-        // Simulate loading documentation
-        setTimeout(() => {
-            document.getElementById('documentation-content').innerHTML = `
-                <h3>API Documentation</h3>
-                <p>This would be the extracted documentation from the repository.</p>
-                <pre class="bg-light p-3 rounded">
-function example(param) {
-  // Example function documentation
-  return param;
-}
-                </pre>
-            `;
-        }, 2500);
+        // Check if we need to start polling for job status
+        const vizStatus = '{{ visualization.status }}';
+        if (vizStatus === 'generating' || vizStatus === 'none') {
+            startJobPolling();
+        }
         
         // Smooth scrolling for navigation
         const navLinks = document.querySelectorAll('#repo-navigation a');
@@ -245,12 +318,237 @@ function example(param) {
                 const targetId = this.getAttribute('href');
                 const targetElement = document.querySelector(targetId);
                 
-                window.scrollTo({
-                    top: targetElement.offsetTop - 20,
-                    behavior: 'smooth'
-                });
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
             });
         });
+    });
+    
+    function startJobPolling() {
+        // Poll every 2 seconds for job status updates
+        jobPollingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/repo/${repoOwner}/${repoName}/visualization/job`);
+                const jobData = await response.json();
+                
+                updateJobProgress(jobData);
+                
+                // Stop polling if job is completed or failed
+                if (jobData.status === 'completed' || jobData.status === 'failed') {
+                    clearInterval(jobPollingInterval);
+                    // Refresh the entire visualization section (background refresh)
+                    await refreshVisualizations(false);
+                }
+            } catch (error) {
+                console.error('Error polling job status:', error);
+            }
+        }, 2000);
+    }
+    
+    function updateJobProgress(jobData) {
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const jobMessage = document.getElementById('job-message');
+        
+        if (progressBar && jobData.progress !== undefined) {
+            progressBar.style.width = `${jobData.progress}%`;
+            progressText.textContent = `${jobData.progress}%`;
+        }
+        
+        if (jobMessage && jobData.message) {
+            jobMessage.textContent = jobData.message;
+        }
+    }
+    
+    async function refreshVisualizations(showButtonLoading = true) {
+        const refreshBtn = document.getElementById('refresh-viz-btn');
+        const originalText = refreshBtn ? refreshBtn.innerHTML : null;
+        
+        // Show loading state only if requested (user-initiated)
+        if (showButtonLoading && refreshBtn) {
+            refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Refreshing...';
+            refreshBtn.disabled = true;
+        }
+        
+        try {
+            const response = await fetch(`/repo/${repoOwner}/${repoName}/visualization/status`);
+            const vizStatus = await response.json();
+            
+            // Update the visualization content
+            await updateVisualizationContent(vizStatus);
+            
+        } catch (error) {
+            console.error('Error refreshing visualizations:', error);
+            if (showButtonLoading) {
+                showAlert('Error refreshing visualizations. Please try again.', 'danger');
+            }
+        } finally {
+            // Restore button state only if we modified it
+            if (showButtonLoading && refreshBtn && originalText) {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
+        }
+    }
+    
+    async function retryVisualization() {
+        try {
+            const response = await fetch(`/repo/${repoOwner}/${repoName}/visualization/generate`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                showAlert('Visualization generation restarted!', 'success');
+                // Start polling again
+                startJobPolling();
+                // Refresh the visualization section (user-initiated)
+                await refreshVisualizations(true);
+            } else {
+                showAlert(result.message, 'info');
+            }
+        } catch (error) {
+            console.error('Error retrying visualization:', error);
+            showAlert('Error retrying visualization generation.', 'danger');
+        }
+    }
+    
+    async function updateVisualizationContent(vizStatus) {
+        const vizContent = document.getElementById('visualization-content');
+        
+        if (vizStatus.status === 'available') {
+            let content = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    ${vizStatus.message}
+                </div>
+            `;
+            
+            if (vizStatus.has_timeline) {
+                content += `
+                    <div class="visualization-section mb-4">
+                        <h5 class="mb-3">
+                            <i class="bi bi-graph-up me-2"></i>Stars & Forks Timeline
+                        </h5>
+                        <div class="plot-container">
+                            <img src="${vizStatus.plot_urls.timeline}" 
+                                 alt="Repository Timeline" 
+                                 class="img-fluid rounded border"
+                                 style="max-width: 100%; height: auto;">
+                        </div>
+                        ${vizStatus.plot_urls.timeline_html ? `
+                        <div class="mt-2">
+                            <a href="${vizStatus.plot_urls.timeline_html}" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>
+                                Open Interactive Plot
+                            </a>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            if (vizStatus.has_heatmap) {
+                content += `
+                    <div class="visualization-section mb-4">
+                        <h5 class="mb-3">
+                            <i class="bi bi-calendar-heat me-2"></i>Activity Heatmap
+                        </h5>
+                        <div class="plot-container">
+                            <img src="${vizStatus.plot_urls.heatmap}" 
+                                 alt="Activity Heatmap" 
+                                 class="img-fluid rounded border"
+                                 style="max-width: 100%; height: auto;">
+                        </div>
+                        ${vizStatus.plot_urls.heatmap_html ? `
+                        <div class="mt-2">
+                            <a href="${vizStatus.plot_urls.heatmap_html}" 
+                               target="_blank" 
+                               class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>
+                                Open Interactive Plot
+                            </a>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            vizContent.innerHTML = content;
+            
+        } else if (vizStatus.status === 'generating') {
+            vizContent.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div>
+                            <strong>${vizStatus.message}</strong>
+                            <div class="mt-2">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: 0%"
+                                         id="progress-bar">
+                                        <span id="progress-text">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted mt-1 d-block" id="job-message">
+                                Initializing...
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            startJobPolling();
+            
+        } else if (vizStatus.status === 'failed') {
+            vizContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    ${vizStatus.message}
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-danger" onclick="retryVisualization()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                            Retry Generation
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; max-width: 400px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+    
+    // Clean up polling interval when leaving the page
+    window.addEventListener('beforeunload', function() {
+        if (jobPollingInterval) {
+            clearInterval(jobPollingInterval);
+        }
     });
 </script>
 {% endblock %}

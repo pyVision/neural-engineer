@@ -15,8 +15,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (query.length < 2) {
             searchResults.classList.add('d-none');
+            // Enable the repository URL input and button when search is not active
+            repositoryUrl.disabled = false;
+            submitRepoUrl.disabled = false;
             return;
         }
+
+        // Disable the repository URL input and button when search is active
+        repositoryUrl.disabled = true;
+        submitRepoUrl.disabled = true;
 
         searchTimeout = setTimeout(async () => {
             try {
@@ -31,6 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error searching repositories:', error);
+            } finally {
+                // Re-enable the repository URL input and button when search is complete
+                repositoryUrl.disabled = false;
+                submitRepoUrl.disabled = false;
             }
         }, 300);
     });
@@ -53,6 +64,31 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!searchResults.contains(e.target) && e.target !== searchRepository) {
             searchResults.classList.add('d-none');
         }
+    });
+
+    // Handle repository removal
+    document.addEventListener('click', async function(e) {
+        const removeButton = e.target.closest('.remove-repo');
+        if (!removeButton) return;
+        
+        e.preventDefault();
+        const owner = removeButton.dataset.owner;
+        const name = removeButton.dataset.name;
+        const isDefault = removeButton.dataset.default === 'true';
+        
+        // Prevent removal of default repositories
+        if (isDefault) {
+            return;
+        }
+        
+        // Store the repo info and button reference
+        repoToRemove = { owner, name, button: removeButton };
+        
+        // Update confirmation modal content
+        document.getElementById('repoFullName').textContent = `${owner}/${name}`;
+        
+        // Show confirmation modal
+        confirmationModal.show();
     });
 
     function displaySearchResults(repos) {
