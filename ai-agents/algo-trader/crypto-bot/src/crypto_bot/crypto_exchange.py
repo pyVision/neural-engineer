@@ -13,6 +13,8 @@ import pandas as pd
 import time
 from datetime import datetime
 import traceback
+import requests
+from typing import List, Dict, Optional
 
 class CryptoExchange:
     """
@@ -38,7 +40,196 @@ class CryptoExchange:
         self.markets = None
         self.currencies = None
         self.exchange_info = None
+        self.cmc_api_key = None
+        self.cms_results = None 
 
+    def set_cmc_api_key(self, api_key: str):
+        """
+        Set the CoinMarketCap API key for market cap data.
+        
+        Args:
+            api_key (str): Your CoinMarketCap API key
+        """
+        self.cmc_api_key = api_key
+
+    def get_market_volume_summary(self, symbols: List[str], convert: str = 'USD') -> Dict:
+        """
+        Get a summary of market volume data for specified symbols.
+        
+        Args:
+            symbols (List[str]): List of cryptocurrency symbols
+            convert (str): Currency to convert values to (default: 'USD')
+            
+        Returns:
+            Dict: Summary statistics of the market data
+        """
+        market_data = self.get_market_volume_by_symbols(symbols, convert)
+        
+        if not market_data:
+            return None
+        
+        # Filter out None values (failed requests)
+        valid_data = {k: v for k, v in market_data.items() if v is not None}
+        
+        if not valid_data:
+            return {"error": "No valid market data retrieved"}
+        
+        # Calculate summary statistics
+        total_market_cap = sum(data['pricing']['market_cap'] for data in valid_data.values() if data['pricing']['market_cap'])
+        total_volume_24h = sum(data['pricing']['volume_24h'] for data in valid_data.values() if data['pricing']['volume_24h'])
+        
+        summary = {
+            'total_symbols_requested': len(symbols),
+            'successful_retrievals': len(valid_data),
+            'failed_retrievals': len(symbols) - len(valid_data),
+            'total_market_cap': total_market_cap,
+            'total_volume_24h': total_volume_24h,
+            'average_market_cap': total_market_cap / len(valid_data) if valid_data else 0,
+            'average_volume_24h': total_volume_24h / len(valid_data) if valid_data else 0,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'convert_currency': convert
+        }
+        
+        # Add top performers
+        if valid_data:
+            sorted_by_market_cap = sorted(valid_data.items(), key=lambda x: x[1]['pricing']['market_cap'] or 0, reverse=True)
+            sorted_by_volume = sorted(valid_data.items(), key=lambda x: x[1]['pricing']['volume_24h'] or 0, reverse=True)
+            
+            summary['top_by_market_cap'] = [(symbol, data['pricing']['market_cap']) for symbol, data in sorted_by_market_cap[:5]]
+            summary['top_by_volume_24h'] = [(symbol, data['pricing']['volume_24h']) for symbol, data in sorted_by_volume[:5]]
+        
+        return summary
+    
+
+    def get_quote_symbols(self, all_tickers,quote_currency='USDT'):
+        """
+        Get symbols that match the specified quote currency from the tickers.
+        
+        Args:
+            tickers (dict): Dictionary of ticker data
+            quote_currency (str): Quote currency to filter by (default: 'USDT')
+
+        Returns:
+            List[str]: List of symbols that match the quote currency
+        """
+
+        quote_symbols =[]
+        for symbol, ticker in all_tickers.items():
+            # Filter by quote currency
+            #print(f"Checking symbol: {symbol}")
+            if not symbol.endswith(f"/{quote_currency}"):
+                continue     
+
+            quote_symbols.append(symbol.replace(f"/{quote_currency}",""))
+    
+        return quote_symbols
+
+    def get_market_volume_by_symbols(self, symbols: List[str], convert: str = 'USD') -> Dict:
+        """
+        Get market volume and market cap data for specified symbols using CoinMarketCap API.
+        
+        Args:
+            symbols (List[str]): List of cryptocurrency symbols (e.g., ['BTC', 'ETH', 'ADA'])
+            convert (str): Currency to convert values to (default: 'USD')
+            
+        Returns:
+            Dict: Dictionary containing market data for each symbol or None if an error occurs
+        """
+        if not self.cmc_api_key:
+            print("CoinMarketCap API key not set. Please use set_cmc_api_key() method first.")
+            return None
+
+        # CoinMarketCap API endpoint
+        url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest'
+        
+        headers = {
+            'Accepts': 'application/json',
+            'X-CMC_PRO_API_KEY': self.cmc_api_key,
+        }
+
+        result = {}
+        batch_size = 100  # CoinMarketCap allows up to 100 symbols per request
+        
+        # Process symbols in batches
+        for i in range(0, len(symbols), batch_size):
+            batch = symbols[i:i + batch_size]
+            symbol_string = ",".join(batch)  
+            
+            parameters = {
+                "symbol": symbol_string
+            }
+            
+            try:
+                #print(f"Fetching market data for batch: {batch}")
+                response = requests.get(url, headers=headers, params=parameters)
+                response.raise_for_status()
+                
+                data = response.json()
+                
+                if data['status']['error_code'] == 0:
+                    # Process each symbol in the response
+                    for symbol in batch:
+                        # if symbol == 'USDS':
+                        #     print(data)
+                        if symbol in data['data']:
+                            symbol_data = data['data'][symbol]
+                            quote_data = symbol_data['quote'][convert]
+
+                            result[symbol] = {
+                                'id': symbol_data['id'],
+                                'name': symbol_data['name'],
+                                'symbol': symbol_data['symbol'],
+                                'slug': symbol_data['slug'],
+                                'cmc_rank': symbol_data['cmc_rank'],
+                                'circulating_supply': symbol_data['circulating_supply'],
+                                'total_supply': symbol_data['total_supply'],
+                                'max_supply': symbol_data['max_supply'],
+                                'last_updated': symbol_data['last_updated'],
+                                'pricing': {
+                                    'price': quote_data['price'],
+                                    'volume_24h': quote_data['volume_24h'],
+                                    'volume_change_24h': quote_data['volume_change_24h'],
+                                    'percent_change_1h': quote_data['percent_change_1h'],
+                                    'percent_change_24h': quote_data['percent_change_24h'],
+                                    'percent_change_7d': quote_data['percent_change_7d'],
+                                    'percent_change_30d': quote_data['percent_change_30d'],
+                                    'percent_change_60d': quote_data['percent_change_60d'],
+                                    'percent_change_90d': quote_data['percent_change_90d'],
+                                    'market_cap': quote_data['market_cap'],
+                                    'market_cap_dominance': quote_data['market_cap_dominance'],
+                                    'fully_diluted_market_cap': quote_data['fully_diluted_market_cap'],
+                                    'last_updated': quote_data['last_updated']
+                                }
+                            }
+                        else:
+                            #print(f"Symbol {symbol} not found in CoinMarketCap API")
+                            result[symbol] = None
+                else:
+                    print(f"CoinMarketCap API error: {data['status']['error_message']}")
+                    # Mark all symbols in this batch as failed
+                    for symbol in batch:
+                        result[symbol] = None
+                        
+            except requests.exceptions.RequestException as e:
+                print(f"Request error fetching data for batch {batch}: {e}")
+                # Mark all symbols in this batch as failed
+                for symbol in batch:
+                    result[symbol] = None
+            except Exception as e:
+                print(f"Error processing batch {batch}: {e}")
+                # Mark all symbols in this batch as failed
+                for symbol in batch:
+                    result[symbol] = None
+            
+            # Rate limiting - CoinMarketCap has rate limits
+            # Basic plan: 333 requests per day, 10,000 requests per month
+            # Wait 1 second between batches to be safe
+            if i + batch_size < len(symbols):
+                time.sleep(1)
+            #break
+
+        return result
+    
     def describe(self):
         """
         Override the describe method to add custom properties.
@@ -54,7 +245,7 @@ class CryptoExchange:
         """
         return ccxt.exchanges
 
-    def init_exchange(self, exchange_id, api_key=None, api_secret=None):
+    def init_exchange(self, exchange_id, api_key=None, api_secret=None,cmc_api_key=None):
         """
         Initialize a specific exchange by its ID.
         
@@ -74,13 +265,47 @@ class CryptoExchange:
             if api_key and api_secret:
                 self.exchange.apiKey = api_key
                 self.exchange.secret = api_secret
+
+            self.set_cmc_api_key(cmc_api_key)  # 
                 
             return self.exchange
         except AttributeError:
             print(f"Exchange {exchange_id} not found.")
             return None
     
+    def get_market_volume(self, symbol=None, convert='USD',market_data=None):
+
+        if market_data is not None:
+            #print("Using provided market data.")
+            self.cms_results= market_data
+
+        if self.cms_results is None:
+            print("CoinMarketCap results not initialized. Please call get_market_volume_by_symbols() first.")
+            return 0
+
+        #symbol= symbol.replace("/","")
+
+        sdata=self.cms_results.get(symbol,None)
+        if sdata is None:
+            print(f"Symbol {symbol} not found in CoinMarketCap data.")
+            return 0
+        if sdata['pricing']['market_cap'] is None:
+            print(f"Market cap for {symbol} is None.")
+            return 0
+        if sdata['pricing']['market_cap'] < 0:
+            print(f"Market cap for {symbol} is negative: {sdata['pricing']['market_cap']}.")
+            return 0
+        if sdata['pricing']['market_cap'] == 0:
+            print(f"Market cap for {symbol} is zero.")
+            return 0
+        
+        return sdata['pricing']['market_cap'] 
+
+
+
     def is_exchange_active(self):
+
+
         """
         Check if the exchange is operational.
         
@@ -97,6 +322,18 @@ class CryptoExchange:
             print(f"Error checking exchange status: {e}")
             return False
 
+    def quote_symbols(self, all_tickers,quote_currency='USD'):
+
+        symbols= []
+
+        for symbol, ticker in all_tickers.items():
+            # Filter by quote currency
+            if not symbol.endswith(f"/{quote_currency}"):
+                continue        
+            symbols.append(symbol)
+
+        return symbols
+
     def get_exchange_info(self, exchange_id=None):
         """
         Get comprehensive information about the exchange.
@@ -107,8 +344,8 @@ class CryptoExchange:
         Returns:
             dict: Detailed information about the exchange or None if an error occurs
         """
-        if exchange_id and not self.exchange:
-            self.init_exchange(exchange_id)
+        # if exchange_id and not self.exchange:
+        #     self.init_exchange(exchange_id)
             
         if not self.exchange:
             return None
@@ -120,6 +357,10 @@ class CryptoExchange:
             # Load markets and currencies
             markets = self.exchange.load_markets()
             currencies = self.exchange.fetch_currencies()
+
+
+
+            
 
             self.markets = markets
             self.currencies = currencies
@@ -261,6 +502,7 @@ class CryptoExchange:
                 tickers = self.exchange.fetch_tickers(symbols)
             else:
                 # Fetch all tickers
+                print("Fetching all tickers")
                 tickers = self.exchange.fetch_tickers()
                 
             for ticker in tickers.values():
@@ -308,6 +550,8 @@ class CryptoExchange:
 
             return result
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Error fetching tickers: {e}")
             return None
 
@@ -507,6 +751,119 @@ class CryptoExchange:
                 
         except Exception as e:
             print(f"Error fetching {order_type} orders for {symbol}: {e}")
+            return None
+            
+    def get_top_movers(self, quote_currency='USDT', limit=10, windowSize='1d', sort_by='percentage_change', sort_desc=True):
+        """
+        Get top gainers and losers based on percentage change within a specified time window.
+        
+        Args:
+            quote_currency (str): Quote currency to filter by (e.g., 'USDT', 'BTC')
+            limit (int): Number of top/bottom pairs to return
+            windowSize (str): Time window for percentage change (e.g., '1h', '1d', '7d')
+            sort_by (str): Field to sort by (e.g., 'percentage_change', 'volume', 'market_cap')
+            sort_desc (bool): Sort in descending order (True) or ascending order (False)
+            
+        Returns:
+            dict: Dictionary containing gainers, losers, and related metadata
+        """
+        if not self.exchange:
+            print("Exchange not initialized.")
+            return None
+            
+        try:
+            # Get all tickers for the specified quote currency
+            all_tickers = self.get_tickers()
+            if not all_tickers:
+                print("Failed to fetch tickers.")
+                return None
+                
+            # Filter tickers by quote currency
+            filtered_tickers = {}
+            for symbol, ticker in all_tickers.items():
+                if symbol.endswith(f'/{quote_currency}'):
+                    filtered_tickers[symbol] = ticker
+            
+            if not filtered_tickers:
+                print(f"No tickers found for {quote_currency} quote currency.")
+                return None
+                
+            # Extract base symbols for market cap data
+            base_symbols = [symbol.split('/')[0] for symbol in filtered_tickers.keys()]
+            market_data = self.get_market_volume_by_symbols(base_symbols) if self.cmc_api_key else None
+            
+            # Prepare data for sorting
+            pairs_data = []
+            for symbol, ticker in filtered_tickers.items():
+                base = symbol.split('/')[0]
+                
+                # Get percentage change based on window size
+                if windowSize == '1h':
+                    percentage = ticker.get('change', {}).get('percent_change_1h', None)
+                elif windowSize == '1d':
+                    percentage = ticker.get('change', {}).get('percentage', None)  # Default 24h change
+                elif windowSize == '7d':
+                    percentage = ticker.get('change', {}).get('percent_change_7d', None)
+                else:
+                    percentage = ticker.get('change', {}).get('percentage', None)
+                
+                # Get volume and market cap
+                volume = ticker.get('volume', {}).get('quote_volume', 0)
+                market_cap = self.get_market_volume(base, market_data=market_data) if market_data else 0
+                
+                # Get price data
+                last = ticker.get('pricing_information', {}).get('last', 0)
+                
+                # Skip entries with no price or percentage change
+                if last == 0 or percentage is None:
+                    continue
+                    
+                # Add entry to pairs data
+                pairs_data.append({
+                    'symbol': symbol,
+                    'base': base,
+                    'quote': quote_currency,
+                    'last': last,
+                    'percentage': percentage,
+                    'volume': volume,
+                    'market_cap': market_cap,
+                    'timestamp': ticker.get('timestamp', None)
+                })
+            
+            if not pairs_data:
+                print("No valid pairs data found.")
+                return None
+                
+            # Sort data for gainers (highest first)
+            if sort_by == 'percentage_change':
+                sort_field = 'percentage'
+            elif sort_by == 'volume':
+                sort_field = 'volume'
+            elif sort_by == 'market_cap':
+                sort_field = 'market_cap'
+            else:
+                sort_field = 'percentage'
+                
+            # Sort data for gainers and losers
+            sorted_pairs = sorted(pairs_data, key=lambda x: x[sort_field] if x[sort_field] is not None else 0, reverse=sort_desc)
+            
+            # Get top gainers and losers
+            gainers = sorted_pairs[:limit] if sort_desc else sorted_pairs[-limit:]
+            losers = sorted_pairs[-limit:] if sort_desc else sorted_pairs[:limit]
+            losers.reverse()  # Show biggest losers first
+            
+            # Return the result
+            return {
+                'gainers': gainers,
+                'losers': losers,
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'quote_currency': quote_currency,
+                'window': windowSize
+            }
+            
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Error fetching top movers: {e}")
             return None
 
 # Example usage:

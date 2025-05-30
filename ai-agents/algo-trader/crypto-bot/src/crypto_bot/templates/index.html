@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #1f1f1f;
+        }
+        .header {
+            background-color: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 15px 0;
+        }
+        .positive {
+            color: #0cbb7a;
+        }
+        .negative {
+            color: #ea4335;
+        }
+        .crypto-table {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .crypto-table th {
+            font-weight: 500;
+            color: #5f6368;
+        }
+        .crypto-row:hover {
+            background-color: #f5f5f5;
+            cursor: pointer;
+        }
+        .pagination-container {
+            margin: 20px 0;
+        }
+        .search-container {
+            max-width: 400px;
+        }
+        .filters-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .currency-symbol {
+            font-weight: 600;
+        }
+        .skeleton-loader {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            height: 24px;
+            border-radius: 4px;
+            margin: 4px 0;
+        }
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Crypto Market Dashboard : BINANCE </h2>
+                <!-- <div class="search-container">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search cryptocurrencies..." aria-label="Search">
+                        <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <!-- Top Movers Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Top Market Movers</h5>
+                        <div class="d-flex align-items-center">
+                            <select id="topMoversWindow" class="form-select form-select-sm me-2" style="width: auto;">
+                                <option value="1d" selected>24 hours</option>
+                                <option value="1h">1 hour</option>
+                                <option value="4h">4 hours</option>
+                                <option value="12h">12 hours</option>
+                                <option value="7d">7 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="topMoversTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="gainers-tab" data-bs-toggle="tab" data-bs-target="#gainers" type="button" role="tab" aria-controls="gainers" aria-selected="true">Top Gainers</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="losers-tab" data-bs-toggle="tab" data-bs-target="#losers" type="button" role="tab" aria-controls="losers" aria-selected="false">Top Losers</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab" aria-controls="volume" aria-selected="false">Top Volume</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3" id="topMoversTabContent">
+                            <!-- Gainers Tab -->
+                            <div class="tab-pane fade show active" id="gainers" role="tabpanel" aria-labelledby="gainers-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Symbol</th>
+                                                <th>Price</th>
+                                                <th>Change</th>
+                                                <th>Volume</th>
+                                                <th>Market Cap</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gainersTableBody">
+                                            <!-- Loading state -->
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">
+                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span class="ms-2">Loading top gainers...</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- Losers Tab -->
+                            <div class="tab-pane fade" id="losers" role="tabpanel" aria-labelledby="losers-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Symbol</th>
+                                                <th>Price</th>
+                                                <th>Change</th>
+                                                <th>Volume</th>
+                                                <th>Market Cap</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="losersTableBody">
+                                            <!-- Loading state -->
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">
+                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span class="ms-2">Loading top losers...</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- Volume Tab -->
+                            <div class="tab-pane fade" id="volume" role="tabpanel" aria-labelledby="volume-tab">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Symbol</th>
+                                                <th>Price</th>
+                                                <th>Change</th>
+                                                <th>Volume</th>
+                                                <th>Market Cap</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="volumeTableBody">
+                                            <!-- Loading state -->
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">
+                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span class="ms-2">Loading top volume...</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-container">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="quoteCurrency">Quote Currency</label>
+                        <select class="form-select" id="quoteCurrency">
+                            <option value="USDT" selected>USDT</option>
+                            <option value="BTC">BTC</option>
+                            <option value="ETH">ETH</option>
+                            <!-- More will be loaded dynamically -->
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="sortBy">Sort By</label>
+                        <select class="form-select" id="sortBy">
+                            <option value="market_cap" selected>Market Cap</option>
+                            <option value="price">Price</option>
+                            <option value="percentage_change">Change (24h)</option>
+                            <option value="volume_24h">Volume (24h)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="sortOrder">Sort Order</label>
+                        <select class="form-select" id="sortOrder">
+                            <option value="desc" selected>Highest First</option>
+                            <option value="asc">Lowest First</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="crypto-table-container">
+            <table class="table crypto-table">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Symbol</th>
+                        <th scope="col">Price</th>
+                        <th scope="col">Change (24h)</th>
+                        <th scope="col">Volume (24h)</th>
+                        <th scope="col">Market Cap</th>
+                    </tr>
+                </thead>
+                <tbody id="cryptoTableBody">
+                    <!-- Loading state will show here -->
+                </tbody>
+            </table>
+            <div id="loadingMessage" class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading cryptocurrency data...</p>
+            </div>
+            <div id="errorMessage" class="alert alert-danger my-3" style="display: none;">
+                Failed to load cryptocurrency data. Please try again later.
+            </div>
+        </div>
+
+        <div class="pagination-container d-flex justify-content-between align-items-center">
+            <div class="page-info">
+                Showing <span id="startEntry">1</span>-<span id="endEntry">50</span> of <span id="totalEntries">--</span> cryptocurrencies
+            </div>
+            <nav aria-label="Cryptocurrency pagination">
+                <ul class="pagination" id="paginationContainer">
+                    <!-- Pagination will be generated here -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="cryptoDetailModal" tabindex="-1" aria-labelledby="cryptoDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cryptoDetailModalLabel">Cryptocurrency Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="cryptoDetailModalBody">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="container mt-5 mb-3">
+        <div class="text-center text-muted">
+            <p>Data provided by NeuralEngineer library. Market data may be delayed.</p>
+            <p>Crypto Market Dashboard v1.0 &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Configuration
+        const API_BASE_URL = '/api';
+        let currentPage = 1;
+        let pageSize = 50;
+        let totalPages = 1;
+        let searchTerm = '';
+        let quoteCurrency = 'USDT';
+        let sortBy = 'market_cap';
+        let sortDesc = true;
+
+        // DOM elements
+        const cryptoTableBody = document.getElementById('cryptoTableBody');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const paginationContainer = document.getElementById('paginationContainer');
+        const startEntry = document.getElementById('startEntry');
+        const endEntry = document.getElementById('endEntry');
+        const totalEntries = document.getElementById('totalEntries');
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const quoteCurrencySelect = document.getElementById('quoteCurrency');
+        const sortBySelect = document.getElementById('sortBy');
+        const sortOrderSelect = document.getElementById('sortOrder');
+        const cryptoDetailModal = document.getElementById('cryptoDetailModal');
+        const cryptoDetailModalLabel = document.getElementById('cryptoDetailModalLabel');
+        const cryptoDetailModalBody = document.getElementById('cryptoDetailModalBody');
+        const gainersTableBody = document.getElementById('gainersTableBody');
+        const losersTableBody = document.getElementById('losersTableBody');
+        const volumeTableBody = document.getElementById('volumeTableBody');
+        const topMoversWindow = document.getElementById('topMoversWindow');
+
+        // Initialize Bootstrap modal
+        const detailModal = new bootstrap.Modal(cryptoDetailModal);
+
+        // Format number with commas
+        function formatNumber(num, digits = 2) {
+            if (num === null || num === undefined) return 'N/A';
+            return new Intl.NumberFormat('en-US', { 
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            }).format(num);
+        }
+
+        // Format currency
+        function formatCurrency(num, currency = 'USD', digits = 2) {
+            if (num === null || num === undefined) return 'N/A';
+            if (num < 0.01 && num > 0) digits = 6;
+            return new Intl.NumberFormat('en-US', { 
+                style: 'currency', 
+                currency: currency,
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            }).format(num);
+        }
+
+        // Format large numbers (for market cap)
+        function formatLargeNumber(num) {
+            if (num === null || num === undefined || num === 0) return 'N/A';
+            
+            if (num >= 1e12) {
+                return '$' + (num / 1e12).toFixed(2) + 'T';
+            } else if (num >= 1e9) {
+                return '$' + (num / 1e9).toFixed(2) + 'B';
+            } else if (num >= 1e6) {
+                return '$' + (num / 1e6).toFixed(2) + 'M';
+            } else if (num >= 1e3) {
+                return '$' + (num / 1e3).toFixed(2) + 'K';
+            } else {
+                return '$' + num.toFixed(2);
+            }
+        }
+
+        // Load cryptocurrencies
+        async function loadCryptos() {
+            try {
+                showLoading(true);
+                
+                // Build API URL with query parameters
+                const url = new URL(`${API_BASE_URL}/cryptos`, window.location.origin);
+                url.searchParams.append('page', currentPage);
+                url.searchParams.append('page_size', pageSize);
+                url.searchParams.append('quote_currency', quoteCurrency);
+                url.searchParams.append('sort_by', sortBy);
+                url.searchParams.append('sort_desc', sortDesc);
+                if (searchTerm) {
+                    url.searchParams.append('search', searchTerm);
+                }
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update pagination info
+                totalPages = data.total_pages;
+                updatePagination();
+                
+                // Update entries info
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = Math.min(start + pageSize - 1, data.total_count);
+                startEntry.textContent = start;
+                endEntry.textContent = end;
+                totalEntries.textContent = data.total_count;
+                
+                // Render cryptocurrency table
+                renderCryptoTable(data.cryptos, start);
+                
+                showLoading(false);
+            } catch (error) {
+                console.error('Error fetching cryptocurrency data:', error);
+                showError(true);
+            }
+        }
+
+        // Render crypto table
+        function renderCryptoTable(cryptos, startIndex) {
+            cryptoTableBody.innerHTML = '';
+            
+            if (cryptos.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="7" class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="bi bi-search" style="font-size: 2rem;"></i>
+                            <p class="mt-2">No cryptocurrencies found matching your criteria</p>
+                        </div>
+                    </td>
+                `;
+                cryptoTableBody.appendChild(row);
+                return;
+            }
+            
+            cryptos.forEach((crypto, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('crypto-row');
+                row.dataset.symbol = crypto.symbol;
+                
+                // Format percentage change
+                const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
+                const changeSign = crypto.percentage_change >= 0 ? '+' : '';
+                
+                row.innerHTML = `
+                    <td>${startIndex + index}</td>
+                    <td>
+                        <div class="currency-symbol">${crypto.name}</div>
+                    </td>
+                    <td>${crypto.symbol}</td>
+                    <td>${formatCurrency(crypto.price, 'USD')}</td>
+                    <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
+                    <td>${formatCurrency(crypto.volume_24h, 'USD', 0)}</td>
+                    <td>${crypto.market_cap ? formatLargeNumber(crypto.market_cap) : 'N/A'}</td>
+                `;
+                cryptoTableBody.appendChild(row);
+                
+                // Add click event for details
+                //row.addEventListener('click', () => showCryptoDetails(crypto.symbol));
+            });
+        }
+
+        // Show crypto details
+        async function showCryptoDetails(symbol) {
+            cryptoDetailModalLabel.textContent = `Loading ${symbol} details...`;
+            cryptoDetailModalBody.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            detailModal.show();
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/crypto/${symbol}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update modal title
+                cryptoDetailModalLabel.textContent = `${symbol} Details`;
+                
+                // Format percentage change
+                const changeClass = data.percentage_change >= 0 ? 'positive' : 'negative';
+                const changeSign = data.percentage_change >= 0 ? '+' : '';
+                
+                // Create content
+                let content = `
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h3>${data.symbol}</h3>
+                            <h4 class="d-flex align-items-center">
+                                ${formatCurrency(data.price, 'USD')} 
+                                <span class="ms-2 ${changeClass}">${changeSign}${formatNumber(data.percentage_change)}%</span>
+                            </h4>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>24h High</span>
+                                        <span class="fw-bold">${formatCurrency(data.high_24h, 'USD')}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>24h Low</span>
+                                        <span class="fw-bold">${formatCurrency(data.low_24h, 'USD')}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>24h Volume</span>
+                                        <span class="fw-bold">${formatCurrency(data.volume_24h, 'USD', 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add order book if available
+                if (data.order_book) {
+                    content += `
+                        <h5>Order Book</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Price (Bids)</th>
+                                            <th>Amount</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // Add bid orders
+                    if (data.order_book.bids && data.order_book.bids.length) {
+                        data.order_book.bids.forEach(bid => {
+                            const price = bid[0];
+                            const amount = bid[1];
+                            content += `
+                                <tr>
+                                    <td class="positive">${formatCurrency(price, 'USD')}</td>
+                                    <td>${formatNumber(amount, 6)}</td>
+                                    <td>${formatCurrency(price * amount, 'USD')}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    content += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Price (Asks)</th>
+                                            <th>Amount</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // Add ask orders
+                    if (data.order_book.asks && data.order_book.asks.length) {
+                        data.order_book.asks.forEach(ask => {
+                            const price = ask[0];
+                            const amount = ask[1];
+                            content += `
+                                <tr>
+                                    <td class="negative">${formatCurrency(price, 'USD')}</td>
+                                    <td>${formatNumber(amount, 6)}</td>
+                                    <td>${formatCurrency(price * amount, 'USD')}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    
+                    content += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                cryptoDetailModalBody.innerHTML = content;
+                
+            } catch (error) {
+                console.error('Error fetching cryptocurrency details:', error);
+                cryptoDetailModalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to load details for ${symbol}. Please try again later.
+                    </div>
+                `;
+            }
+        }
+
+        // Update pagination controls
+        function updatePagination() {
+            paginationContainer.innerHTML = '';
+            
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.classList.add('page-item');
+            if (currentPage === 1) prevLi.classList.add('disabled');
+            
+            const prevLink = document.createElement('a');
+            prevLink.classList.add('page-link');
+            prevLink.href = '#';
+            prevLink.setAttribute('aria-label', 'Previous');
+            prevLink.innerHTML = '<span aria-hidden="true">&laquo;</span>';
+            prevLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadCryptos();
+                }
+            });
+            
+            prevLi.appendChild(prevLink);
+            paginationContainer.appendChild(prevLi);
+            
+            // Page numbers - show up to 5 pages
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // Adjust start if end is maxed out
+            if (endPage === totalPages) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageLi = document.createElement('li');
+                pageLi.classList.add('page-item');
+                if (i === currentPage) pageLi.classList.add('active');
+                
+                const pageLink = document.createElement('a');
+                pageLink.classList.add('page-link');
+                pageLink.href = '#';
+                pageLink.textContent = i;
+                pageLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentPage = i;
+                    loadCryptos();
+                });
+                
+                pageLi.appendChild(pageLink);
+                paginationContainer.appendChild(pageLi);
+            }
+            
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.classList.add('page-item');
+            if (currentPage === totalPages) nextLi.classList.add('disabled');
+            
+            const nextLink = document.createElement('a');
+            nextLink.classList.add('page-link');
+            nextLink.href = '#';
+            nextLink.setAttribute('aria-label', 'Next');
+            nextLink.innerHTML = '<span aria-hidden="true">&raquo;</span>';
+            nextLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadCryptos();
+                }
+            });
+            
+            nextLi.appendChild(nextLink);
+            paginationContainer.appendChild(nextLi);
+        }
+
+        // Show/hide loading state
+        function showLoading(isLoading) {
+            if (isLoading) {
+                loadingMessage.style.display = 'block';
+                errorMessage.style.display = 'none';
+                cryptoTableBody.innerHTML = '';
+                for (let i = 0; i < 10; i++) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                        <td><div class="skeleton-loader"></div></td>
+                    `;
+                    cryptoTableBody.appendChild(row);
+                }
+            } else {
+                loadingMessage.style.display = 'none';
+            }
+        }
+
+        // Show/hide error state
+        function showError(isError) {
+            errorMessage.style.display = isError ? 'block' : 'none';
+            loadingMessage.style.display = 'none';
+        }
+
+        // // Search functionality
+        // searchButton.addEventListener('click', () => {
+        //     searchTerm = searchInput.value.trim();
+        //     currentPage = 1;
+        //     loadCryptos();
+        // });
+
+        // searchInput.addEventListener('keypress', (e) => {
+        //     if (e.key === 'Enter') {
+        //         searchTerm = searchInput.value.trim();
+        //         currentPage = 1;
+        //         loadCryptos();
+        //     }
+        // });
+
+        // Filter and sort change handlers
+        quoteCurrencySelect.addEventListener('change', () => {
+            quoteCurrency = quoteCurrencySelect.value;
+            currentPage = 1;
+            loadCryptos();
+            loadTopMovers();
+        });
+
+        sortBySelect.addEventListener('change', () => {
+            sortBy = sortBySelect.value;
+            currentPage = 1;
+            loadCryptos();
+        });
+
+        sortOrderSelect.addEventListener('change', () => {
+            sortDesc = sortOrderSelect.value === 'desc';
+            currentPage = 1;
+            loadCryptos();
+        });
+
+        // Event listener for top movers window size change
+        topMoversWindow.addEventListener('change', () => {
+            loadTopMovers();
+        });
+
+        // Load available quote currencies
+        async function loadQuoteCurrencies() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/markets`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.quote_currencies && data.quote_currencies.length) {
+                    quoteCurrencySelect.innerHTML = '';
+                    
+                    // Add common ones first
+                    const commonCurrencies = ['USDT', 'USDC', 'BTC', 'ETH', 'FDUSD','BNB','BTC'];
+                    
+                    // Add common currencies first
+                    commonCurrencies.forEach(currency => {
+                        if (data.quote_currencies.includes(currency)) {
+                            const option = document.createElement('option');
+                            option.value = currency;
+                            option.textContent = currency;
+                            if (currency === quoteCurrency) option.selected = true;
+                            quoteCurrencySelect.appendChild(option);
+                        }
+                    });
+                    
+                    // Add separator
+                    const separator = document.createElement('option');
+                    separator.disabled = true;
+                    separator.textContent = '──────────';
+                    quoteCurrencySelect.appendChild(separator);
+                    
+                    // Add other currencies
+                    data.quote_currencies.forEach(currency => {
+                        if (!commonCurrencies.includes(currency)) {
+                            const option = document.createElement('option');
+                            option.value = currency;
+                            option.textContent = currency;
+                            quoteCurrencySelect.appendChild(option);
+                        }
+                    });
+                }
+                else
+                {
+                    console.log("No quote currencies found");
+                }
+            } catch (error) {
+                console.error('Error fetching quote currencies:', error);
+            }
+        }
+
+        // Load top movers (gainers, losers, and volume)
+        async function loadTopMovers() {
+            try {
+                // Clear previous content and show loading state
+                gainersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Loading top gainers...</span>
+                        </td>
+                    </tr>
+                `;
+                
+                losersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Loading top losers...</span>
+                        </td>
+                    </tr>
+                `;
+                
+                const volumeTableBody = document.getElementById('volumeTableBody');
+                volumeTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Loading top volume...</span>
+                        </td>
+                    </tr>
+                `;
+
+                // Build API URL with parameters
+                const window1 = document.getElementById('topMoversWindow').value;
+                const url = new URL(`${API_BASE_URL}/top-movers`, window.location.origin);
+                url.searchParams.append('quote_currency', quoteCurrency);
+                url.searchParams.append('limit', 10); // Show top 10
+                url.searchParams.append('window', window1);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Render gainers table
+                d1=data.gainers.cryptos
+                if (d1 && d1.length) {
+                    gainersTableBody.innerHTML = '';
+                    
+                    d1.forEach((crypto) => {
+                        const row = document.createElement('tr');
+                        row.classList.add('crypto-row');
+                        row.dataset.symbol = crypto.symbol;
+                        
+                        console.log("Gainers data:", crypto);
+                        const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
+                        const changeSign = crypto.percentage_change >= 0 ? '+' : '';
+                        
+                        // Calculate market cap if available or use provided value
+                        const marketCap = crypto.market_cap ;
+                        
+                        row.innerHTML = `
+                            <td>${crypto.symbol}</td>
+                            <td>${formatCurrency(crypto.price, 'USD')}</td>
+                            <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
+                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
+                            <td>${formatLargeNumber(marketCap || 0)}</td>
+                        `;
+                        
+                        gainersTableBody.appendChild(row);
+                    });
+                } else {
+                    gainersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-3">
+                                <div class="text-muted">No gainers data available.</div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                // Render losers table
+                d1=data.losers.cryptos
+                if (d1 && d1.length) {
+                    losersTableBody.innerHTML = '';
+                    
+                    d1.forEach((crypto) => {
+                        const row = document.createElement('tr');
+                        row.classList.add('crypto-row');
+                        row.dataset.symbol = crypto.symbol;
+                        
+                        const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
+                        const changeSign = crypto.percentage_change >= 0 ? '+' : '';
+                        
+                        // Calculate market cap if available or use provided value
+                        const marketCap = crypto.market_cap ;
+                        
+                        row.innerHTML = `
+                            <td>${crypto.symbol}</td>
+                            <td>${formatCurrency(crypto.price, 'USD')}</td>
+                            <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
+                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
+                            <td>${formatLargeNumber(marketCap || 0)}</td>
+                        `;
+                        
+                        losersTableBody.appendChild(row);
+                    });
+                } else {
+                    losersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center py-3">
+                                <div class="text-muted">No losers data available.</div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                f1=data.volume && data.volume.length
+                console.log("Volume data:", data.volume);
+                // Render top volume table
+                //const volumeTableBody = document.getElementById('volumeTableBody');
+                d1=data.volume.cryptos
+                if (d1 && d1.length) {
+                    volumeTableBody.innerHTML = '';
+                    
+                    d1.forEach((crypto) => {
+                        const row = document.createElement('tr');
+                        row.classList.add('crypto-row');
+                        row.dataset.symbol = crypto.symbol;
+
+                        const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
+                        const changeSign = crypto.percentage_change >= 0 ? '+' : '';
+
+                        // Calculate market cap if available or use provided value
+                        const marketCap = crypto.market_cap;
+
+                        row.innerHTML = `
+                            <td>${crypto.symbol}</td>
+                            <td>${formatCurrency(crypto.price, 'USD')}</td>
+                            <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
+                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
+                            <td>${formatLargeNumber(marketCap || 0)}</td>
+                        `;
+                        
+                        volumeTableBody.appendChild(row);
+                    });
+                } else {
+                    // If not provided in API, create from existing data sorted by volume
+                    const allCryptos = [...(data.gainers || []), ...(data.losers || [])];
+                    if (allCryptos.length > 0) {
+                        volumeTableBody.innerHTML = '';
+                        
+                        // Sort by volume (highest first)
+                        const topVolume = [...allCryptos].sort((a, b) => (b.volume || 0) - (a.volume || 0)).slice(0, 10);
+                        
+                        topVolume.forEach((crypto) => {
+                            const row = document.createElement('tr');
+                            row.classList.add('crypto-row');
+                            row.dataset.symbol = crypto.base;
+                            
+                            const changeClass = crypto.percentage >= 0 ? 'positive' : 'negative';
+                            const changeSign = crypto.percentage >= 0 ? '+' : '';
+                            
+                            // Calculate market cap if available or use provided value
+                            const marketCap = crypto.market_cap || (crypto.last * (crypto.circulating_supply || 0));
+                            
+                            row.innerHTML = `
+                                <td>${crypto.base}</td>
+                                <td>${formatCurrency(crypto.last, 'USD')}</td>
+                                <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage)}%</td>
+                                <td>${formatCurrency(crypto.volume || 0, 'USD', 0)}</td>
+                                <td>${formatLargeNumber(marketCap || 0)}</td>
+                            `;
+                            
+                            volumeTableBody.appendChild(row);
+                        });
+                    } else {
+                        volumeTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center py-3">
+                                    <div class="text-muted">No volume data available.</div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }
+                
+            } catch (error) {
+
+                console.error('Error fetching top movers data:', error);
+                
+                // // Show error message in both tables
+                // gainersTableBody.innerHTML = `
+                //     <tr>
+                //         <td colspan="5" class="text-center py-3">
+                //             <div class="text-danger">
+                //                 <i class="bi bi-exclamation-triangle me-2"></i>
+                //                 Failed to load gainers data.
+                //             </div>
+                //         </td>
+                //     </tr>
+                // `;
+                
+                // losersTableBody.innerHTML = `
+                //     <tr>
+                //         <td colspan="5" class="text-center py-3">
+                //             <div class="text-danger">
+                //                 <i class="bi bi-exclamation-triangle me-2"></i>
+                //                 Failed to load losers data.
+                //             </div>
+                //         </td>
+                //     </tr>
+                // `;
+
+                // volumeTableBody.innerHTML = `
+                //     <tr>
+                //         <td colspan="5" class="text-center py-3">
+                //             <div class="text-danger">
+                //                 <i class="bi bi-exclamation-triangle me-2"></i>
+                //                 Failed to load losers data.
+                //             </div>
+                //         </td>
+                //     </tr>
+                // `;
+
+            }
+        }
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            loadQuoteCurrencies();
+            //loadCryptos();
+            loadTopMovers();
+        });
+    </script>
+</body>
+</html>
