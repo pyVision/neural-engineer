@@ -973,24 +973,24 @@
                         volumeTableBody.innerHTML = '';
                         
                         // Sort by volume (highest first)
-                        const topVolume = [...allCryptos].sort((a, b) => (b.volume || 0) - (a.volume || 0)).slice(0, 10);
+                        const topVolume = [...allCryptos].sort((a, b) => (b.volume_24h || 0) - (a.volume_24h || 0)).slice(0, 10);
                         
                         topVolume.forEach((crypto) => {
                             const row = document.createElement('tr');
                             row.classList.add('crypto-row');
-                            row.dataset.symbol = crypto.base;
-                            
-                            const changeClass = crypto.percentage >= 0 ? 'positive' : 'negative';
-                            const changeSign = crypto.percentage >= 0 ? '+' : '';
-                            
+                            row.dataset.symbol = crypto.symbol;
+
+                            const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
+                            const changeSign = crypto.percentage_change >= 0 ? '+' : '';
+
                             // Calculate market cap if available or use provided value
-                            const marketCap = crypto.market_cap || (crypto.last * (crypto.circulating_supply || 0));
-                            
+                            const marketCap = crypto.market_cap || (crypto.price * (crypto.circulating_supply || 0));
+
                             row.innerHTML = `
-                                <td>${crypto.base}</td>
-                                <td>${formatCurrency(crypto.last, 'USD')}</td>
-                                <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage)}%</td>
-                                <td>${formatCurrency(crypto.volume || 0, 'USD', 0)}</td>
+                                <td>${crypto.symbol}</td>
+                                <td>${formatCurrency(crypto.price, 'USD')}</td>
+                                <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
+                                <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
                                 <td>${formatLargeNumber(marketCap || 0)}</td>
                             `;
                             
