@@ -182,15 +182,15 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Top Market Movers</h5>
+                        <h5 class="mb-0">Market Data : Spot Trading</h5>
                         <div class="d-flex align-items-center">
-                            <select id="topMoversWindow" class="form-select form-select-sm me-2" style="width: auto;">
+                            <!-- <select id="topMoversWindow" class="form-select form-select-sm me-2" style="width: auto;">
                                 <option value="1d" selected>24 hours</option>
                                 <option value="1h">1 hour</option>
                                 <option value="4h">4 hours</option>
                                 <option value="12h">12 hours</option>
                                 <option value="7d">7 days</option>
-                            </select>
+                            </select> -->
                         </div>
                     </div>
                     <div class="card-body">
@@ -245,13 +245,12 @@
                                                         <th>Symbol</th>
                                                         <th>Price</th>
                                                         <th>Change</th>
-                                                        <th>Market Cap</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="gainersTableBody">
                                                     <!-- Loading state -->
                                                     <tr>
-                                                        <td colspan="4" class="text-center py-3">
+                                                        <td colspan="3" class="text-center py-3">
                                                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                                                 <span class="visually-hidden">Loading...</span>
                                                             </div>
@@ -382,7 +381,7 @@
             </div>
         </div>
 
-        <div class="filters-container">
+        <!-- <div class="filters-container">
             <div class="row">
                 <div class="col-md-4">
                     <div class="form-group">
@@ -391,7 +390,7 @@
                             <option value="USDT" selected>USDT</option>
                             <option value="BTC">BTC</option>
                             <option value="ETH">ETH</option>
-                            <!-- More will be loaded dynamically -->
+                            
                         </select>
                     </div>
                 </div>
@@ -432,7 +431,7 @@
                     </tr>
                 </thead>
                 <tbody id="cryptoTableBody">
-                    <!-- Loading state will show here -->
+                   
                 </tbody>
             </table>
             <div id="loadingMessage" class="text-center my-5">
@@ -444,7 +443,7 @@
             <div id="errorMessage" class="alert alert-danger my-3" style="display: none;">
                 Failed to load cryptocurrency data. Please try again later.
             </div>
-        </div>
+        </div> -->
 
         <div class="pagination-container d-flex justify-content-between align-items-center">
             <div class="page-info">
@@ -1131,34 +1130,34 @@
         // });
 
         // Filter and sort change handlers
-        quoteCurrencySelect.addEventListener('change', () => {
-            quoteCurrency = quoteCurrencySelect.value;
-            currentPage = 1;
-            loadCryptos();
-            loadTopMovers();
-        });
+        // quoteCurrencySelect.addEventListener('change', () => {
+        //     quoteCurrency = quoteCurrencySelect.value;
+        //     currentPage = 1;
+        //     loadCryptos();
+        //     loadTopMovers();
+        // });
 
-        sortBySelect.addEventListener('change', () => {
-            sortBy = sortBySelect.value;
-            currentPage = 1;
-            loadCryptos();
-        });
+        // sortBySelect.addEventListener('change', () => {
+        //     sortBy = sortBySelect.value;
+        //     currentPage = 1;
+        //     loadCryptos();
+        // });
 
-        sortOrderSelect.addEventListener('change', () => {
-            sortDesc = sortOrderSelect.value === 'desc';
-            currentPage = 1;
-            loadCryptos();
-        });
+        // sortOrderSelect.addEventListener('change', () => {
+        //     sortDesc = sortOrderSelect.value === 'desc';
+        //     currentPage = 1;
+        //     loadCryptos();
+        // });
 
         // Event listener for top movers window size change
-        topMoversWindow.addEventListener('change', () => {
-            // Update the selected time period display
-            const selectedTimeWindow = topMoversWindow.options[topMoversWindow.selectedIndex].text;
-            document.getElementById('selected-time-period').textContent = selectedTimeWindow;
+        // topMoversWindow.addEventListener('change', () => {
+        //     // Update the selected time period display
+        //     const selectedTimeWindow = topMoversWindow.options[topMoversWindow.selectedIndex].text;
+        //     document.getElementById('selected-time-period').textContent = selectedTimeWindow;
             
-            // Reload the data
-            loadTopMovers();
-        });
+        //     // Reload the data
+        //     loadTopMovers();
+        // });
 
         // Load available quote currencies
         async function loadQuoteCurrencies() {
@@ -1252,7 +1251,7 @@
                 `;
 
                 // Build API URL with parameters
-                const window1 = document.getElementById('topMoversWindow').value;
+                const window1 = '24h' //document.getElementById('topMoversWindow').value;
                 const url = new URL(`${API_BASE_URL}/top-movers`, window.location.origin);
                 url.searchParams.append('quote_currency', quoteCurrency);
                 url.searchParams.append('limit', 10); // Show top 10
@@ -1280,14 +1279,10 @@
                         const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
                         const changeSign = crypto.percentage_change >= 0 ? '+' : '';
                         
-                        // Calculate market cap if available or use provided value
-                        const marketCap = crypto.market_cap ;
-                        
                         row.innerHTML = `
                             <td>${crypto.symbol}</td>
                             <td>${formatCurrency(crypto.price, 'USD')}</td>
                             <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
-                            <td>${formatLargeNumber(marketCap || 0)}</td>
                         `;
                         
                         gainersTableBody.appendChild(row);
@@ -1295,7 +1290,7 @@
                 } else {
                     gainersTableBody.innerHTML = `
                         <tr>
-                            <td colspan="4" class="text-center py-3">
+                            <td colspan="3" class="text-center py-3">
                                 <div class="text-muted">No gainers data available.</div>
                             </td>
                         </tr>
@@ -2121,7 +2116,7 @@
         // Initialize the dashboard
         document.addEventListener('DOMContentLoaded', () => {
             loadQuoteCurrencies();
-            updateTimePeriodDisplay(); // Update the time period display on page load
+            //updateTimePeriodDisplay(); // Update the time period display on page load
             loadTopMovers(); // Make sure this loads on page initialization
             
             // Initialize tooltips
