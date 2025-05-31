@@ -64,6 +64,20 @@
         #currencyInfoResults .card-header {
             font-weight: 500;
         }
+        
+        /* Symbol Search styles */
+        #symbolSearchResults .card {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        #symbolSearchResults .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        #symbolSearchResults .text-muted.small {
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
         .currency-symbol {
             font-weight: 600;
         }
@@ -1386,21 +1400,29 @@
                             <div class="row mb-4">
                                 <div class="col-md-6">
                                     <h3>${formatCurrency(data.price, 'USD')}</h3>
+                                    <div class="text-muted small mb-2">The current market price at which the cryptocurrency is trading.</div>
+                                    
                                     <h5 class="${changeClass}">${changeSign}${formatNumber(data.percentage_change)}%</h5>
+                                    <div class="text-muted small mb-3">Percentage price change over the last 24 hours. ${data.percentage_change >= 0 ? 'Positive values indicate price appreciation' : 'Negative values indicate price depreciation'}.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="d-flex justify-content-between mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
                                         <span>24h High:</span>
                                         <span class="fw-bold">${formatCurrency(data.high_24h, 'USD')}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between mb-2">
+                                    <div class="text-muted small mb-2">The highest price point reached in the last 24 hours.</div>
+                                    
+                                    <div class="d-flex justify-content-between mb-1">
                                         <span>24h Low:</span>
                                         <span class="fw-bold">${formatCurrency(data.low_24h, 'USD')}</span>
                                     </div>
-                                    <div class="d-flex justify-content-between">
+                                    <div class="text-muted small mb-2">The lowest price point reached in the last 24 hours.</div>
+                                    
+                                    <div class="d-flex justify-content-between mb-1">
                                         <span>24h Volume:</span>
                                         <span class="fw-bold">${formatCurrency(data.volume_24h, 'USD', 0)}</span>
                                     </div>
+                                    <div class="text-muted small">The total trading volume in the last 24 hours, indicating market liquidity and trading activity.</div>
                                 </div>
                             </div>
                 `;
@@ -1948,7 +1970,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadQuoteCurrencies();
             //loadCryptos();
-            loadTopMovers();
+            //loadTopMovers();
             
             // Add event listeners for symbol search
             const symbolSearchInput = document.getElementById('symbolSearchInput');
