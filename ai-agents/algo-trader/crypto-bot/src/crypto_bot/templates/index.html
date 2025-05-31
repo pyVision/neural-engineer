@@ -64,6 +64,66 @@
         #currencyInfoResults .card-header {
             font-weight: 500;
         }
+        #currencyInfoResults .text-muted.small {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #6c757d !important;
+        }
+        #currencyInfoResults .alert-info {
+            background-color: #f0f7fc;
+            border-color: #d2e3f1;
+            color: #345d7e;
+        }
+        #currencyInfoResults [data-bs-toggle="tooltip"] {
+            border-bottom: 1px dotted #aaa;
+            cursor: help;
+        }
+        #currencyInfoResults .fw-medium {
+            font-weight: 500;
+        }
+        
+        /* Trading Data tab styles */
+        #trading-data .card {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+            margin-bottom: 1.5rem;
+        }
+        #trading-data .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        #trading-data .card-header {
+            background-color: #f8f9fa;
+            font-weight: 500;
+            border-bottom: 2px solid #e9ecef;
+        }
+        #trading-data .text-muted {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-width: 800px;
+        }
+        #trading-data .table th {
+            color: #5f6368;
+            font-weight: 500;
+        }
+        #trading-data .fw-bold {
+            color: #1976d2;
+            font-weight: 600;
+        }
+        #trading-data .crypto-row:hover td {
+            background-color: #f5faff;
+        }
+        
+        /* Highlight trading data sections */
+        #trading-data .card:nth-child(1) .card-header {
+            border-left: 4px solid #0cbb7a; /* Green for gainers */
+        }
+        #trading-data .card:nth-child(2) .card-header {
+            border-left: 4px solid #ea4335; /* Red for losers */
+        }
+        #trading-data .card:nth-child(3) .card-header {
+            border-left: 4px solid #1976d2; /* Blue for volume */
+        }
         
         /* Symbol Search styles */
         #symbolSearchResults .card {
@@ -136,13 +196,7 @@
                     <div class="card-body">
                         <ul class="nav nav-tabs" id="topMoversTab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="gainers-tab" data-bs-toggle="tab" data-bs-target="#gainers" type="button" role="tab" aria-controls="gainers" aria-selected="true">Top Gainers</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="losers-tab" data-bs-toggle="tab" data-bs-target="#losers" type="button" role="tab" aria-controls="losers" aria-selected="false">Top Losers</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab" aria-controls="volume" aria-selected="false">Top Volume</button>
+                                <button class="nav-link active" id="trading-data-tab" data-bs-toggle="tab" data-bs-target="#trading-data" type="button" role="tab" aria-controls="trading-data" aria-selected="true">Trading Data</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="symbol-search-tab" data-bs-toggle="tab" data-bs-target="#symbol-search" type="button" role="tab" aria-controls="symbol-search" aria-selected="false">Symbol Search</button>
@@ -152,85 +206,132 @@
                             </li>
                         </ul>
                         <div class="tab-content mt-3" id="topMoversTabContent">
-                            <!-- Gainers Tab -->
-                            <div class="tab-pane fade show active" id="gainers" role="tabpanel" aria-labelledby="gainers-tab">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Symbol</th>
-                                                <th>Price</th>
-                                                <th>Change</th>
-                                                <th>Volume</th>
-                                                <th>Market Cap</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="gainersTableBody">
-                                            <!-- Loading state -->
-                                            <tr>
-                                                <td colspan="5" class="text-center py-3">
-                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                        <span class="visually-hidden">Loading...</span>
-                                                    </div>
-                                                    <span class="ms-2">Loading top gainers...</span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                            <!-- Trading Data Tab -->
+                            <div class="tab-pane fade show active" id="trading-data" role="tabpanel" aria-labelledby="trading-data-tab">
+                                <div class="alert alert-light border mb-4">
+                                    <h5 class="alert-heading mb-2">Market Overview</h5>
+                                    <p class="mb-1">This dashboard displays key trading data to help identify market trends and opportunities:</p>
+                                    <ul class="mb-2">
+                                        <li><strong>Top Gainers</strong>: Cryptocurrencies with the highest price increases</li>
+                                        <li><strong>Top Losers</strong>: Cryptocurrencies with the largest price decreases</li>
+                                        <li><strong>Top Volume</strong>: Cryptocurrencies with the highest trading volume</li>
+                                    </ul>
+                                    <p class="mb-0">Click on any cryptocurrency row to view detailed information. Use the time period selector above to adjust the data timeframe.</p>
                                 </div>
-                            </div>
-                            <!-- Losers Tab -->
-                            <div class="tab-pane fade" id="losers" role="tabpanel" aria-labelledby="losers-tab">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Symbol</th>
-                                                <th>Price</th>
-                                                <th>Change</th>
-                                                <th>Volume</th>
-                                                <th>Market Cap</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="losersTableBody">
-                                            <!-- Loading state -->
-                                            <tr>
-                                                <td colspan="5" class="text-center py-3">
-                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                        <span class="visually-hidden">Loading...</span>
-                                                    </div>
-                                                    <span class="ms-2">Loading top losers...</span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <h5>Trading Overview</h5>
+                                        <div class="d-flex align-items-center">
+                                            <span class="text-muted me-2">Time period:</span>
+                                            <span id="selected-time-period" class="badge bg-info">24 hours</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <!-- Volume Tab -->
-                            <div class="tab-pane fade" id="volume" role="tabpanel" aria-labelledby="volume-tab">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Symbol</th>
-                                                <th>Price</th>
-                                                <th>Change</th>
-                                                <th>Volume</th>
-                                                <th>Market Cap</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="volumeTableBody">
-                                            <!-- Loading state -->
-                                            <tr>
-                                                <td colspan="5" class="text-center py-3">
-                                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                        <span class="visually-hidden">Loading...</span>
-                                                    </div>
-                                                    <span class="ms-2">Loading top volume...</span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                
+                                <!-- Top Gainers Section -->
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0">Top Gainers</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <p class="text-muted">Cryptocurrencies with the highest positive price change in the selected time period. These assets have shown the strongest bullish momentum.</p>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Symbol</th>
+                                                        <th>Price</th>
+                                                        <th>Change</th>
+                                                        <th>Market Cap</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="gainersTableBody">
+                                                    <!-- Loading state -->
+                                                    <tr>
+                                                        <td colspan="4" class="text-center py-3">
+                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                <span class="visually-hidden">Loading...</span>
+                                                            </div>
+                                                            <span class="ms-2">Loading top gainers...</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Losers Section -->
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0">Top Losers</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <p class="text-muted">Cryptocurrencies with the largest negative price change in the selected time period. These assets have shown the strongest bearish momentum.</p>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Symbol</th>
+                                                        <th>Price</th>
+                                                        <th>Change</th>
+                                                        <th>Market Cap</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="losersTableBody">
+                                                    <!-- Loading state -->
+                                                    <tr>
+                                                        <td colspan="4" class="text-center py-3">
+                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                <span class="visually-hidden">Loading...</span>
+                                                            </div>
+                                                            <span class="ms-2">Loading top losers...</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Top Volume Section -->
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0">Top Volume</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <p class="text-muted">Cryptocurrencies with the highest trading volume in the selected time period. High volume often indicates strong market activity and liquidity.</p>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Symbol</th>
+                                                        <th>Price</th>
+                                                        <th>Volume</th>
+                                                        <th>Market Cap</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="volumeTableBody">
+                                                    <!-- Loading state -->
+                                                    <tr>
+                                                        <td colspan="4" class="text-center py-3">
+                                                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                <span class="visually-hidden">Loading...</span>
+                                                            </div>
+                                                            <span class="ms-2">Loading top volume...</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <!-- Symbol Search Tab -->
@@ -1051,6 +1152,11 @@
 
         // Event listener for top movers window size change
         topMoversWindow.addEventListener('change', () => {
+            // Update the selected time period display
+            const selectedTimeWindow = topMoversWindow.options[topMoversWindow.selectedIndex].text;
+            document.getElementById('selected-time-period').textContent = selectedTimeWindow;
+            
+            // Reload the data
             loadTopMovers();
         });
 
@@ -1113,7 +1219,7 @@
                 // Clear previous content and show loading state
                 gainersTableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-3">
+                        <td colspan="4" class="text-center py-3">
                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -1124,7 +1230,7 @@
                 
                 losersTableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-3">
+                        <td colspan="4" class="text-center py-3">
                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -1136,7 +1242,7 @@
                 const volumeTableBody = document.getElementById('volumeTableBody');
                 volumeTableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-3">
+                        <td colspan="4" class="text-center py-3">
                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -1181,7 +1287,6 @@
                             <td>${crypto.symbol}</td>
                             <td>${formatCurrency(crypto.price, 'USD')}</td>
                             <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
-                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
                             <td>${formatLargeNumber(marketCap || 0)}</td>
                         `;
                         
@@ -1190,7 +1295,7 @@
                 } else {
                     gainersTableBody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-center py-3">
+                            <td colspan="4" class="text-center py-3">
                                 <div class="text-muted">No gainers data available.</div>
                             </td>
                         </tr>
@@ -1217,7 +1322,6 @@
                             <td>${crypto.symbol}</td>
                             <td>${formatCurrency(crypto.price, 'USD')}</td>
                             <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
-                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
                             <td>${formatLargeNumber(marketCap || 0)}</td>
                         `;
                         
@@ -1226,7 +1330,7 @@
                 } else {
                     losersTableBody.innerHTML = `
                         <tr>
-                            <td colspan="5" class="text-center py-3">
+                            <td colspan="4" class="text-center py-3">
                                 <div class="text-muted">No losers data available.</div>
                             </td>
                         </tr>
@@ -1246,17 +1350,13 @@
                         row.classList.add('crypto-row');
                         row.dataset.symbol = crypto.symbol;
 
-                        const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
-                        const changeSign = crypto.percentage_change >= 0 ? '+' : '';
-
                         // Calculate market cap if available or use provided value
                         const marketCap = crypto.market_cap;
 
                         row.innerHTML = `
                             <td>${crypto.symbol}</td>
                             <td>${formatCurrency(crypto.price, 'USD')}</td>
-                            <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
-                            <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
+                            <td class="fw-bold">${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
                             <td>${formatLargeNumber(marketCap || 0)}</td>
                         `;
                         
@@ -1276,17 +1376,13 @@
                             row.classList.add('crypto-row');
                             row.dataset.symbol = crypto.symbol;
 
-                            const changeClass = crypto.percentage_change >= 0 ? 'positive' : 'negative';
-                            const changeSign = crypto.percentage_change >= 0 ? '+' : '';
-
                             // Calculate market cap if available or use provided value
                             const marketCap = crypto.market_cap || (crypto.price * (crypto.circulating_supply || 0));
 
                             row.innerHTML = `
                                 <td>${crypto.symbol}</td>
                                 <td>${formatCurrency(crypto.price, 'USD')}</td>
-                                <td class="${changeClass}">${changeSign}${formatNumber(crypto.percentage_change)}%</td>
-                                <td>${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
+                                <td class="fw-bold">${formatCurrency(crypto.volume_24h || 0, 'USD', 0)}</td>
                                 <td>${formatLargeNumber(marketCap || 0)}</td>
                             `;
                             
@@ -1295,7 +1391,7 @@
                     } else {
                         volumeTableBody.innerHTML = `
                             <tr>
-                                <td colspan="5" class="text-center py-3">
+                                <td colspan="4" class="text-center py-3">
                                     <div class="text-muted">No volume data available.</div>
                                 </td>
                             </tr>
@@ -1743,19 +1839,27 @@
                             <h5 class="mb-0">Currency Summary</h5>
                             <small class="text-muted">Values in ${data.convert}</small>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <div class="alert alert-info p-2">
+                                        <h6 class="mb-1">About This Data</h6>
+                                        <p class="mb-0 small">This table displays key metrics for the requested cryptocurrencies. Hover over column headers for more information about each metric.</p>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Symbol</th>
-                                            <th>Name</th>
-                                            <th>Price</th>
-                                            <th>24h Change</th>
-                                            <th>7d Change</th>
-                                            <th>Market Cap</th>
-                                            <th>Volume (24h)</th>
-                                            <th>Supply</th>
+                                            <th data-bs-toggle="tooltip" title="The ticker symbol representing the cryptocurrency">Symbol</th>
+                                            <th data-bs-toggle="tooltip" title="The full name of the cryptocurrency">Name</th>
+                                            <th data-bs-toggle="tooltip" title="Current market price in the selected currency">Price</th>
+                                            <th data-bs-toggle="tooltip" title="Percentage change in price over the last 24 hours">24h Change</th>
+                                            <th data-bs-toggle="tooltip" title="Percentage change in price over the last 7 days">7d Change</th>
+                                            <th data-bs-toggle="tooltip" title="Total market value of circulating supply (Price × Circulating Supply)">Market Cap</th>
+                                            <th data-bs-toggle="tooltip" title="Total trading volume over the last 24 hours">Volume (24h)</th>
+                                            <th data-bs-toggle="tooltip" title="Information about circulating, total, and maximum supply">Supply</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1780,14 +1884,13 @@
                             <td class="${change24hClass}">${change24hSign}${formatNumber(pricing.percent_change_24h || 0)}%</td>
                             <td class="${change7dClass}">${change7dSign}${formatNumber(pricing.percent_change_7d || 0)}%</td>
                             <td>${formatLargeNumber(pricing.market_cap || 0)}</td>
-                            <td>${formatLargeNumber(pricing.volume_24h || 0)}</td>
-                            <td>
-                                <small>
-                                    <div>Circulating: ${formatNumber(currencyData.circulating_supply || 0, 0)}</div>
-                                    <div>Total: ${formatNumber(currencyData.total_supply || 0, 0)}</div>
-                                    <div>Max: ${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) : 'No limit'}</div>
-                                </small>
-                            </td>
+                            <td>${formatLargeNumber(pricing.volume_24h || 0)}</td>                                            <td>
+                                                <small>
+                                                    <div title="Number of coins currently in circulation and publicly available">Circulating: ${formatNumber(currencyData.circulating_supply || 0, 0)}</div>
+                                                    <div title="Total number of coins that have been created, including locked or reserved coins">Total: ${formatNumber(currencyData.total_supply || 0, 0)}</div>
+                                                    <div title="Maximum number of coins that will ever exist (if applicable)">Max: ${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) : 'No limit'}</div>
+                                                </small>
+                                            </td>
                         </tr>
                     `;
                 }
@@ -1829,6 +1932,7 @@
                                         <div class="card mb-3">
                                             <div class="card-header">Basic Information</div>
                                             <div class="card-body">
+                                                <div class="text-muted small mb-3">Core identifying details about this cryptocurrency.</div>
                                                 <table class="table table-sm">
                                                     <tbody>
                                                         <tr>
@@ -1839,15 +1943,15 @@
                                                             <td>Symbol:</td>
                                                             <td><strong>${currencyData.symbol}</strong></td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="URL-friendly version of the cryptocurrency name">
                                                             <td>Slug:</td>
                                                             <td>${currencyData.slug || 'N/A'}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Unique identifier in the CoinMarketCap database">
                                                             <td>ID:</td>
                                                             <td>${currencyData.id || 'N/A'}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Position in market capitalization rankings">
                                                             <td>CMC Rank:</td>
                                                             <td>#${currencyData.cmc_rank || 'N/A'}</td>
                                                         </tr>
@@ -1863,17 +1967,21 @@
                                         <div class="card mb-3">
                                             <div class="card-header">Supply Information</div>
                                             <div class="card-body">
+                                                <div class="text-muted small mb-3">
+                                                    Supply metrics indicate how many coins or tokens exist and their distribution status. 
+                                                    These figures impact scarcity, potential inflation, and overall value.
+                                                </div>
                                                 <table class="table table-sm">
                                                     <tbody>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="The number of coins that are publicly available and circulating in the market">
                                                             <td>Circulating Supply:</td>
                                                             <td>${formatNumber(currencyData.circulating_supply || 0, 0)} ${currencyData.symbol}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="All coins that currently exist, including those locked, reserved, or not yet released into circulation">
                                                             <td>Total Supply:</td>
                                                             <td>${formatNumber(currencyData.total_supply || 0, 0)} ${currencyData.symbol}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="The maximum number of coins that will ever be created. Some cryptocurrencies like Bitcoin have a fixed cap, while others may not have a limit">
                                                             <td>Max Supply:</td>
                                                             <td>${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) + ' ' + currencyData.symbol : 'No limit'}</td>
                                                         </tr>
@@ -1886,22 +1994,45 @@
                                     <!-- Right Column: Price & Market Data -->
                                     <div class="col-md-6">
                                         <div class="card mb-3">
-                                            <div class="card-header">Current Price</div>
+                                            <div class="card-header">Current Price & Market Data</div>
                                             <div class="card-body">
+                                                <div class="text-muted small mb-3">
+                                                    Current market metrics showing the asset's valuation and trading activity.
+                                                </div>
                                                 <h3>${formatCurrency(pricing.price || 0, data.convert)}</h3>
-                                                <div class="mt-2">
-                                                    <div>Market Cap: ${formatLargeNumber(pricing.market_cap || 0)}</div>
-                                                    <div>Fully Diluted Market Cap: ${formatLargeNumber(pricing.fully_diluted_market_cap || 0)}</div>
-                                                    <div>Market Cap Dominance: ${formatNumber(pricing.market_cap_dominance || 0, 2)}%</div>
-                                                    <div>Volume (24h): ${formatLargeNumber(pricing.volume_24h || 0)}</div>
-                                                    <div>Volume Change (24h): ${formatChangeWithClass(pricing.volume_change_24h)}</div>
+                                                <div class="mt-3">
+                                                    <div class="mb-2">
+                                                        <span data-bs-toggle="tooltip" title="Total value of all circulating coins (Price × Circulating Supply)">Market Cap:</span> 
+                                                        <span class="fw-medium">${formatLargeNumber(pricing.market_cap || 0)}</span>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <span data-bs-toggle="tooltip" title="Theoretical market cap if maximum supply was in circulation (Price × Max Supply)">Fully Diluted Market Cap:</span> 
+                                                        <span class="fw-medium">${formatLargeNumber(pricing.fully_diluted_market_cap || 0)}</span>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <span data-bs-toggle="tooltip" title="Percentage of total crypto market capitalization this coin represents">Market Cap Dominance:</span> 
+                                                        <span class="fw-medium">${formatNumber(pricing.market_cap_dominance || 0, 2)}%</span>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <span data-bs-toggle="tooltip" title="Total trading volume across all markets in the last 24 hours">Volume (24h):</span> 
+                                                        <span class="fw-medium">${formatLargeNumber(pricing.volume_24h || 0)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span data-bs-toggle="tooltip" title="Percentage change in trading volume over the last 24 hours">Volume Change (24h):</span> 
+                                                        <span class="fw-medium">${formatChangeWithClass(pricing.volume_change_24h)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                         
                                         <div class="card">
                                             <div class="card-header">Price Changes</div>
-                                            <div class="card-body p-0">
+                                            <div class="card-body">
+                                                <div class="text-muted small mb-3">
+                                                    Price performance across different timeframes helps identify short and long-term trends.
+                                                    <span class="positive">Green</span> indicates price appreciation, 
+                                                    <span class="negative">red</span> indicates decline.
+                                                </div>
                                                 <table class="table table-hover mb-0">
                                                     <thead>
                                                         <tr>
@@ -1910,27 +2041,27 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Very short-term price movement, often reflects immediate market reactions">
                                                             <td>1 Hour</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_1h)}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Short-term trend showing daily market sentiment">
                                                             <td>24 Hours</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_24h)}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Medium-term trend showing weekly market direction">
                                                             <td>7 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_7d)}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Monthly trend indicating stronger market patterns">
                                                             <td>30 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_30d)}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Sustained medium-term price movement">
                                                             <td>60 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_60d)}</td>
                                                         </tr>
-                                                        <tr>
+                                                        <tr data-bs-toggle="tooltip" title="Long-term price trend, useful for identifying major market cycles">
                                                             <td>90 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_90d)}</td>
                                                         </tr>
@@ -1966,11 +2097,42 @@
             }
         }
 
+        // Initialize tooltips
+        function initTooltips() {
+            // Initialize all tooltips on the page
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    trigger: 'hover',
+                    placement: 'auto'
+                });
+            });
+        }
+        
+        // Update the time period display
+        function updateTimePeriodDisplay() {
+            const selectedTimeWindow = topMoversWindow.options[topMoversWindow.selectedIndex].text;
+            const timePeriodElement = document.getElementById('selected-time-period');
+            if (timePeriodElement) {
+                timePeriodElement.textContent = selectedTimeWindow;
+            }
+        }
+
         // Initialize the dashboard
         document.addEventListener('DOMContentLoaded', () => {
             loadQuoteCurrencies();
-            //loadCryptos();
-            //loadTopMovers();
+            updateTimePeriodDisplay(); // Update the time period display on page load
+            loadTopMovers(); // Make sure this loads on page initialization
+            
+            // Initialize tooltips
+            initTooltips();
+            
+            // Re-initialize tooltips after dynamic content is loaded
+            document.addEventListener('DOMNodeInserted', function(event) {
+                if (event.target.querySelector && event.target.querySelector('[data-bs-toggle="tooltip"]')) {
+                    setTimeout(initTooltips, 100);
+                }
+            });
             
             // Add event listeners for symbol search
             const symbolSearchInput = document.getElementById('symbolSearchInput');
