@@ -49,6 +49,21 @@
             box-shadow: 0 1px 5px rgba(0,0,0,0.05);
             margin-bottom: 20px;
         }
+        /* Currency Info tab styles */
+        #currencyInfoResults .card {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+        #currencyInfoResults .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        #currencyInfoResults table {
+            font-size: 0.95rem;
+        }
+        #currencyInfoResults .card-header {
+            font-weight: 500;
+        }
         .currency-symbol {
             font-weight: 600;
         }
@@ -114,6 +129,12 @@
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab" aria-controls="volume" aria-selected="false">Top Volume</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="symbol-search-tab" data-bs-toggle="tab" data-bs-target="#symbol-search" type="button" role="tab" aria-controls="symbol-search" aria-selected="false">Symbol Search</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="currency-info-tab" data-bs-toggle="tab" data-bs-target="#currency-info" type="button" role="tab" aria-controls="currency-info" aria-selected="false">Currency Info</button>
                             </li>
                         </ul>
                         <div class="tab-content mt-3" id="topMoversTabContent">
@@ -196,6 +217,48 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                            <!-- Symbol Search Tab -->
+                            <div class="tab-pane fade" id="symbol-search" role="tabpanel" aria-labelledby="symbol-search-tab">
+                                <div class="row mb-3">
+                                    <div class="col-md-6 mx-auto">
+                                        <div class="input-group">
+                                            <input type="text" id="symbolSearchInput" class="form-control" placeholder="Enter cryptocurrency symbol (e.g., BTC/USDT)" aria-label="Search for a cryptocurrency">
+                                            <button class="btn btn-primary" type="button" id="symbolSearchButton">Search</button>
+                                        </div>
+                                        <div class="form-text mt-1">Enter the full trading pair like BTC/USDT, ETH/BTC, etc.</div>
+                                    </div>
+                                </div>
+                                <div id="symbolSearchResults" class="mt-3">
+                                    <div class="text-center text-muted py-5">
+                                        Enter a cryptocurrency symbol above to see detailed information
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Currency Info Tab -->
+                            <div class="tab-pane fade" id="currency-info" role="tabpanel" aria-labelledby="currency-info-tab">
+                                <div class="row mb-3">
+                                    <div class="col-md-8 mx-auto">
+                                        <div class="input-group">
+                                            <input type="text" id="currencySymbolsInput" class="form-control" placeholder="Enter cryptocurrency symbols separated by commas (e.g., BTC,ETH,ADA)" aria-label="Cryptocurrency symbols">
+                                            <select id="convertCurrencySelect" class="form-select" style="max-width: 120px;">
+                                                <option value="USD" selected>USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="BTC">BTC</option>
+                                            </select>
+                                            <button class="btn btn-primary" type="button" id="getCurrencyInfoButton">Get Info</button>
+                                        </div>
+                                        <div class="form-text mt-1">Enter base symbols only (e.g., BTC, ETH, ADA), not trading pairs</div>
+                                    </div>
+                                </div>
+                                <div id="currencyInfoResults" class="mt-3">
+                                    <div class="text-center text-muted py-5">
+                                        Enter cryptocurrency symbols above to see detailed information
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -429,6 +492,19 @@
         function renderCryptoTable(cryptos, startIndex) {
             cryptoTableBody.innerHTML = '';
             
+            // Add click handlers to all crypto rows
+            function addClickHandlersToRows() {
+                document.querySelectorAll('.crypto-row').forEach(row => {
+                    if (row.dataset.symbol) {
+                        row.style.cursor = 'pointer';
+                        row.addEventListener('click', () => showCryptoDetails(row.dataset.symbol));
+                    }
+                });
+            }
+            
+            // Call after a small delay to ensure DOM is updated
+            setTimeout(addClickHandlersToRows, 100);
+            
             if (cryptos.length === 0) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -483,6 +559,8 @@
             
             detailModal.show();
             
+            detailModal.show();
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/crypto/${symbol}`);
                 
@@ -533,19 +611,205 @@
                 // Add order book if available
                 if (data.order_book) {
                     content += `
-                        <h5>Order Book</h5>
+                        <h5 class="mt-4">Order Book Analysis</h5>
+                    `;
+                    
+                    // Add order book statistics if available
+                    if (data.order_book_stats) {
+                        content += `
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Market Depth Analytics</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <!-- Left Column: Buy Side -->
+                                        <div class="col-md-6">
+                                            <h6 class="text-success">Buy Side (Bids)</h6>
+                        `;
+                        
+                        // Add top bid
+                        if (data.order_book_stats.top_bid) {
+                            const topBid = data.order_book_stats.top_bid.value;
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Top Bid:</span>
+                                        <span class="fw-bold">${formatCurrency(topBid[0], 'USD')} (${formatNumber(topBid[1])})</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.top_bid.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Add average bid
+                        if (data.order_book_stats.average_bid) {
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Average Bid:</span>
+                                        <span class="fw-bold">${formatCurrency(data.order_book_stats.average_bid.value, 'USD')}</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.average_bid.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Add weighted bid
+                        if (data.order_book_stats.weighted_bid) {
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Weighted Average Bid:</span>
+                                        <span class="fw-bold">${formatCurrency(data.order_book_stats.weighted_bid.value, 'USD')}</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.weighted_bid.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        content += `
+                                        </div>
+                                        
+                                        <!-- Right Column: Sell Side -->
+                                        <div class="col-md-6">
+                                            <h6 class="text-danger">Sell Side (Asks)</h6>
+                        `;
+                        
+                        // Add top ask
+                        if (data.order_book_stats.top_ask) {
+                            const topAsk = data.order_book_stats.top_ask.value;
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Top Ask:</span>
+                                        <span class="fw-bold">${formatCurrency(topAsk[0], 'USD')} (${formatNumber(topAsk[1])})</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.top_ask.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Add average ask
+                        if (data.order_book_stats.average_ask) {
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Average Ask:</span>
+                                        <span class="fw-bold">${formatCurrency(data.order_book_stats.average_ask.value, 'USD')}</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.average_ask.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Add weighted ask
+                        if (data.order_book_stats.weighted_ask) {
+                            content += `
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Weighted Average Ask:</span>
+                                        <span class="fw-bold">${formatCurrency(data.order_book_stats.weighted_ask.value, 'USD')}</span>
+                                    </div>
+                                    <div class="text-muted small">${data.order_book_stats.weighted_ask.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        content += `
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Market Spread Analysis -->
+                                    <div class="border-top pt-3 mt-3">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                        `;
+                        
+                        // Add spread information
+                        if (data.order_book_stats.spread) {
+                            const spread = data.order_book_stats.spread;
+                            content += `
+                                <div class="mb-2">
+                                    <h6>Market Spread</h6>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Absolute Value:</span>
+                                        <span class="fw-bold">${formatCurrency(spread.value, 'USD')}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Percentage:</span>
+                                        <span class="fw-bold">${formatNumber(spread.percentage)}%</span>
+                                    </div>
+                                    <div class="text-muted small">${spread.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        content += `
+                                            </div>
+                                            <div class="col-md-6">
+                        `;
+                        
+                        // Add liquidity assessment
+                        if (data.order_book_stats.liquidity) {
+                            const liquidity = data.order_book_stats.liquidity;
+                            const sentimentClass = liquidity.ratio > 1 ? 'text-success' : 'text-danger';
+                            const sentimentText = liquidity.ratio > 1 ? 'Buying pressure dominates' : 'Selling pressure dominates';
+                            
+                            content += `
+                                <div class="mb-2">
+                                    <h6>Market Liquidity</h6>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Bid/Ask Ratio:</span>
+                                        <span class="fw-bold ${sentimentClass}">${formatNumber(liquidity.ratio)}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Market Sentiment:</span>
+                                        <span class="${sentimentClass}">${sentimentText}</span>
+                                    </div>
+                                    <div class="text-muted small">${liquidity.explanation}</div>
+                                </div>
+                            `;
+                        }
+                        
+                        content += `
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Display raw order book data
+                    content += `
+                        <h6 class="mb-3">Order Book Data</h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Price (Bids)</th>
-                                            <th>Amount</th>
-                                            <th>Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                <div class="card mb-3">
+                                    <div class="card-header bg-success text-white">Bids (Buy Orders)</div>
+                                    <div class="card-body p-0">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Price</th>
+                                                    <th>Amount</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
                     `;
+                    
+                    // Add description for bids
+                    if (data.order_book_stats && data.order_book_stats.descriptions && data.order_book_stats.descriptions.bids) {
+                        content += `
+                            <tr>
+                                <td colspan="3" class="text-muted small">
+                                    ${data.order_book_stats.descriptions.bids}
+                                </td>
+                            </tr>
+                        `;
+                    }
                     
                     // Add bid orders
                     if (data.order_book.bids && data.order_book.bids.length) {
@@ -566,17 +830,33 @@
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="col-md-6">
-                                <table class="table table-sm">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-danger text-white">Asks (Sell Orders)</div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Price (Asks)</th>
+                                            <th>Price</th>
                                             <th>Amount</th>
                                             <th>Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                     `;
+                    
+                    // Add description for asks
+                    if (data.order_book_stats && data.order_book_stats.descriptions && data.order_book_stats.descriptions.asks) {
+                        content += `
+                            <tr>
+                                <td colspan="3" class="text-muted small">
+                                    ${data.order_book_stats.descriptions.asks}
+                                </td>
+                            </tr>
+                        `;
+                    }
                     
                     // Add ask orders
                     if (data.order_book.asks && data.order_book.asks.length) {
@@ -598,7 +878,9 @@
                                 </table>
                             </div>
                         </div>
-                    `;
+                    </div>
+                </div>
+            `;
                 }
                 
                 cryptoDetailModalBody.innerHTML = content;
@@ -1007,6 +1289,16 @@
                     }
                 }
                 
+                // Add click handlers to all cryptocurrency rows
+                setTimeout(() => {
+                    document.querySelectorAll('.crypto-row').forEach(row => {
+                        if (row.dataset.symbol) {
+                            row.style.cursor = 'pointer';
+                            row.addEventListener('click', () => showCryptoDetails(row.dataset.symbol));
+                        }
+                    });
+                }, 100);
+                
             } catch (error) {
 
                 console.error('Error fetching top movers data:', error);
@@ -1048,11 +1340,644 @@
             }
         }
 
+        // Symbol Search functionality
+        async function searchCryptoSymbol(symbol) {
+            const resultsDiv = document.getElementById('symbolSearchResults');
+            
+            if (!symbol.trim()) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        Enter a cryptocurrency symbol above to see detailed information
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show loading state
+            resultsDiv.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Searching for ${symbol}...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/crypto/${symbol}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Format percentage change
+                const changeClass = data.percentage_change >= 0 ? 'positive' : 'negative';
+                const changeSign = data.percentage_change >= 0 ? '+' : '';
+                
+                // Create content
+                let content = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>${data.symbol} Details</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h3>${formatCurrency(data.price, 'USD')}</h3>
+                                    <h5 class="${changeClass}">${changeSign}${formatNumber(data.percentage_change)}%</h5>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>24h High:</span>
+                                        <span class="fw-bold">${formatCurrency(data.high_24h, 'USD')}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>24h Low:</span>
+                                        <span class="fw-bold">${formatCurrency(data.low_24h, 'USD')}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>24h Volume:</span>
+                                        <span class="fw-bold">${formatCurrency(data.volume_24h, 'USD', 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                `;
+                
+                // Add order book if available
+                if (data.order_book && data.order_book.bids && data.order_book.asks) {
+                    content += `
+                        <h5 class="mt-4 mb-3">Order Book</h5>
+                        
+                        <!-- Order Book Statistics -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">Order Book Statistics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Left Column: Bid Stats -->
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">Bids (Buy Orders)</h6>
+                                        <div class="mb-3">
+                    `;
+                    
+                    // Add top bid
+                    if (data.order_book_stats && data.order_book_stats.top_bid) {
+                        const topBid = data.order_book_stats.top_bid.value;
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Top Bid:</strong> ${formatCurrency(topBid[0], 'USD')} (${formatNumber(topBid[1])} units)</div>
+                                <div class="text-muted small">${data.order_book_stats.top_bid.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add average bid
+                    if (data.order_book_stats && data.order_book_stats.average_bid) {
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Average Bid Price:</strong> ${formatCurrency(data.order_book_stats.average_bid.value, 'USD')}</div>
+                                <div class="text-muted small">${data.order_book_stats.average_bid.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add weighted bid
+                    if (data.order_book_stats && data.order_book_stats.weighted_bid) {
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Weighted Bid Price:</strong> ${formatCurrency(data.order_book_stats.weighted_bid.value, 'USD')}</div>
+                                <div class="text-muted small">${data.order_book_stats.weighted_bid.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    content += `
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Right Column: Ask Stats -->
+                                    <div class="col-md-6">
+                                        <h6 class="text-danger">Asks (Sell Orders)</h6>
+                                        <div class="mb-3">
+                    `;
+                    
+                    // Add top ask
+                    if (data.order_book_stats && data.order_book_stats.top_ask) {
+                        const topAsk = data.order_book_stats.top_ask.value;
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Top Ask:</strong> ${formatCurrency(topAsk[0], 'USD')} (${formatNumber(topAsk[1])} units)</div>
+                                <div class="text-muted small">${data.order_book_stats.top_ask.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add average ask
+                    if (data.order_book_stats && data.order_book_stats.average_ask) {
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Average Ask Price:</strong> ${formatCurrency(data.order_book_stats.average_ask.value, 'USD')}</div>
+                                <div class="text-muted small">${data.order_book_stats.average_ask.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add weighted ask
+                    if (data.order_book_stats && data.order_book_stats.weighted_ask) {
+                        content += `
+                            <div class="mb-2">
+                                <div><strong>Weighted Ask Price:</strong> ${formatCurrency(data.order_book_stats.weighted_ask.value, 'USD')}</div>
+                                <div class="text-muted small">${data.order_book_stats.weighted_ask.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    content += `
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Market Spread -->
+                                <div class="border-top pt-3 mt-2">
+                    `;
+                    
+                    // Add spread information
+                    if (data.order_book_stats && data.order_book_stats.spread) {
+                        const spread = data.order_book_stats.spread;
+                        content += `
+                            <div class="mb-3">
+                                <h6>Market Spread</h6>
+                                <div><strong>Spread Value:</strong> ${formatCurrency(spread.value, 'USD')} (${formatNumber(spread.percentage)}%)</div>
+                                <div class="text-muted small">${spread.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Add liquidity assessment
+                    if (data.order_book_stats && data.order_book_stats.liquidity) {
+                        const liquidity = data.order_book_stats.liquidity;
+                        const sentimentClass = liquidity.ratio > 1 ? 'text-success' : 'text-danger';
+                        const sentimentText = liquidity.ratio > 1 ? 'Buying pressure' : 'Selling pressure';
+                        
+                        content += `
+                            <div class="mb-2">
+                                <h6>Market Liquidity</h6>
+                                <div><strong>Total Bid Volume:</strong> ${formatNumber(liquidity.bid_volume)} units</div>
+                                <div><strong>Total Ask Volume:</strong> ${formatNumber(liquidity.ask_volume)} units</div>
+                                <div><strong>Bid/Ask Ratio:</strong> <span class="${sentimentClass}">${formatNumber(liquidity.ratio)} (${sentimentText})</span></div>
+                                <div class="text-muted small">${liquidity.explanation}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    content += `
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Raw Order Book Data -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-header bg-success text-white">Bids (Buy Orders)</div>
+                                    <div class="card-body p-0">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Price</th>
+                                                    <th>Amount</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                    `;
+                    
+                    // Add description for bids
+                    if (data.order_book_stats && data.order_book_stats.descriptions && data.order_book_stats.descriptions.bids) {
+                        content += `
+                            <tr>
+                                <td colspan="3" class="text-muted small">
+                                    ${data.order_book_stats.descriptions.bids}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    // Add bid orders (limited to 5)
+                    const bids = data.order_book.bids.slice(0, 5);
+                    bids.forEach(bid => {
+                        const price = bid[0];
+                        const amount = bid[1];
+                        const total = price * amount;
+                        
+                        content += `
+                            <tr>
+                                <td>${formatCurrency(price, 'USD')}</td>
+                                <td>${formatNumber(amount)}</td>
+                                <td>${formatCurrency(total, 'USD')}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    content += `
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-header bg-danger text-white">Asks (Sell Orders)</div>
+                                    <div class="card-body p-0">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Price</th>
+                                                    <th>Amount</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                    `;
+                    
+                    // Add description for asks
+                    if (data.order_book_stats && data.order_book_stats.descriptions && data.order_book_stats.descriptions.asks) {
+                        content += `
+                            <tr>
+                                <td colspan="3" class="text-muted small">
+                                    ${data.order_book_stats.descriptions.asks}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    // Add ask orders (limited to 5)
+                    const asks = data.order_book.asks.slice(0, 5);
+                    asks.forEach(ask => {
+                        const price = ask[0];
+                        const amount = ask[1];
+                        const total = price * amount;
+                        
+                        content += `
+                            <tr>
+                                <td>${formatCurrency(price, 'USD')}</td>
+                                <td>${formatNumber(amount)}</td>
+                                <td>${formatCurrency(total, 'USD')}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    content += `
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Close main divs
+                content += `
+                        </div>
+                        <div class="card-footer text-muted">
+                            Last updated: ${new Date(data.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = content;
+                
+            } catch (error) {
+                console.error('Error fetching cryptocurrency details:', error);
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Failed to fetch data for ${symbol}: ${error.message}
+                    </div>
+                    <div class="text-center text-muted mt-3">
+                        <p>Please verify that you entered a valid cryptocurrency symbol.</p>
+                        <p>Example formats: BTC/USDT, ETH/BTC, SOL/USDT</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Currency Info functionality
+        async function getCurrencyInfo(symbols, convertCurrency) {
+            const resultsDiv = document.getElementById('currencyInfoResults');
+            
+            if (!symbols.trim()) {
+                resultsDiv.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        Please enter at least one cryptocurrency symbol
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show loading state
+            resultsDiv.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading data for ${symbols}...</p>
+                </div>
+            `;
+            
+            try {
+                // Build the API URL with query parameters
+                const url = new URL(`${API_BASE_URL}/currency-info`, window.location.origin);
+                url.searchParams.append('symbols', symbols);
+                url.searchParams.append('convert', convertCurrency);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("Currency info data:", data);
+                
+                if (!data.data || Object.keys(data.data).length === 0) {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            No data found for the provided symbols.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Create summary table
+                let content = `
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Currency Summary</h5>
+                            <small class="text-muted">Values in ${data.convert}</small>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Name</th>
+                                            <th>Price</th>
+                                            <th>24h Change</th>
+                                            <th>7d Change</th>
+                                            <th>Market Cap</th>
+                                            <th>Volume (24h)</th>
+                                            <th>Supply</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `;
+                
+                // Add row for each cryptocurrency in the summary table
+                for (const [symbol, currencyData] of Object.entries(data.data)) {
+                    const pricing = currencyData.pricing || {};
+                    
+                    // Format percentage changes
+                    const change24hClass = (pricing.percent_change_24h || 0) >= 0 ? 'positive' : 'negative';
+                    const change24hSign = (pricing.percent_change_24h || 0) >= 0 ? '+' : '';
+                    
+                    const change7dClass = (pricing.percent_change_7d || 0) >= 0 ? 'positive' : 'negative';
+                    const change7dSign = (pricing.percent_change_7d || 0) >= 0 ? '+' : '';
+                    
+                    content += `
+                        <tr>
+                            <td><strong>${currencyData.symbol}</strong></td>
+                            <td>${currencyData.name}</td>
+                            <td>${formatCurrency(pricing.price || 0, data.convert)}</td>
+                            <td class="${change24hClass}">${change24hSign}${formatNumber(pricing.percent_change_24h || 0)}%</td>
+                            <td class="${change7dClass}">${change7dSign}${formatNumber(pricing.percent_change_7d || 0)}%</td>
+                            <td>${formatLargeNumber(pricing.market_cap || 0)}</td>
+                            <td>${formatLargeNumber(pricing.volume_24h || 0)}</td>
+                            <td>
+                                <small>
+                                    <div>Circulating: ${formatNumber(currencyData.circulating_supply || 0, 0)}</div>
+                                    <div>Total: ${formatNumber(currencyData.total_supply || 0, 0)}</div>
+                                    <div>Max: ${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) : 'No limit'}</div>
+                                </small>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                content += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted">
+                            <div class="row">
+                                <div class="col-md-6">Last Updated: ${new Date(data.timestamp).toLocaleString()}</div>
+                                <div class="col-md-6 text-end">Data provided by CoinMarketCap</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Create detailed cards for each cryptocurrency
+                for (const [symbol, currencyData] of Object.entries(data.data)) {
+                    const pricing = currencyData.pricing || {};
+                    
+                    // Format percentage changes for various time periods
+                    const formatChangeWithClass = (value) => {
+                        const cls = (value || 0) >= 0 ? 'positive' : 'negative';
+                        const sign = (value || 0) >= 0 ? '+' : '';
+                        return `<span class="${cls}">${sign}${formatNumber(value || 0)}%</span>`;
+                    };
+                    
+                    content += `
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">${currencyData.name} (${currencyData.symbol}) - Complete Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Left Column: Basic Info -->
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header">Basic Information</div>
+                                            <div class="card-body">
+                                                <table class="table table-sm">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>Name:</td>
+                                                            <td><strong>${currencyData.name}</strong></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Symbol:</td>
+                                                            <td><strong>${currencyData.symbol}</strong></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Slug:</td>
+                                                            <td>${currencyData.slug || 'N/A'}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>ID:</td>
+                                                            <td>${currencyData.id || 'N/A'}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>CMC Rank:</td>
+                                                            <td>#${currencyData.cmc_rank || 'N/A'}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Last Updated:</td>
+                                                            <td>${new Date(currencyData.last_updated).toLocaleString()}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="card mb-3">
+                                            <div class="card-header">Supply Information</div>
+                                            <div class="card-body">
+                                                <table class="table table-sm">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>Circulating Supply:</td>
+                                                            <td>${formatNumber(currencyData.circulating_supply || 0, 0)} ${currencyData.symbol}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Total Supply:</td>
+                                                            <td>${formatNumber(currencyData.total_supply || 0, 0)} ${currencyData.symbol}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Max Supply:</td>
+                                                            <td>${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) + ' ' + currencyData.symbol : 'No limit'}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Right Column: Price & Market Data -->
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header">Current Price</div>
+                                            <div class="card-body">
+                                                <h3>${formatCurrency(pricing.price || 0, data.convert)}</h3>
+                                                <div class="mt-2">
+                                                    <div>Market Cap: ${formatLargeNumber(pricing.market_cap || 0)}</div>
+                                                    <div>Fully Diluted Market Cap: ${formatLargeNumber(pricing.fully_diluted_market_cap || 0)}</div>
+                                                    <div>Market Cap Dominance: ${formatNumber(pricing.market_cap_dominance || 0, 2)}%</div>
+                                                    <div>Volume (24h): ${formatLargeNumber(pricing.volume_24h || 0)}</div>
+                                                    <div>Volume Change (24h): ${formatChangeWithClass(pricing.volume_change_24h)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="card">
+                                            <div class="card-header">Price Changes</div>
+                                            <div class="card-body p-0">
+                                                <table class="table table-hover mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Time Period</th>
+                                                            <th>Change</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td>1 Hour</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_1h)}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>24 Hours</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_24h)}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>7 Days</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_7d)}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>30 Days</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_30d)}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>60 Days</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_60d)}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>90 Days</td>
+                                                            <td>${formatChangeWithClass(pricing.percent_change_90d)}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-muted">
+                                <small>Price data updated: ${new Date(pricing.last_updated).toLocaleString()}</small>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                
+                resultsDiv.innerHTML = content;
+                
+            } catch (error) {
+                console.error('Error fetching currency information:', error);
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Failed to fetch currency information: ${error.message}
+                    </div>
+                    <div class="text-center text-muted mt-3">
+                        <p>Please check that you entered valid cryptocurrency symbols.</p>
+                        <p>Example format: BTC,ETH,SOL,ADA (without spaces)</p>
+                    </div>
+                `;
+            }
+        }
+
         // Initialize the dashboard
         document.addEventListener('DOMContentLoaded', () => {
             loadQuoteCurrencies();
             //loadCryptos();
             loadTopMovers();
+            
+            // Add event listeners for symbol search
+            const symbolSearchInput = document.getElementById('symbolSearchInput');
+            const symbolSearchButton = document.getElementById('symbolSearchButton');
+            
+            symbolSearchButton.addEventListener('click', () => {
+                searchCryptoSymbol(symbolSearchInput.value.trim());
+            });
+            
+            symbolSearchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchCryptoSymbol(symbolSearchInput.value.trim());
+                }
+            });
+            
+            // Add event listeners for currency info
+            const currencySymbolsInput = document.getElementById('currencySymbolsInput');
+            const convertCurrencySelect = document.getElementById('convertCurrencySelect');
+            const getCurrencyInfoButton = document.getElementById('getCurrencyInfoButton');
+            
+            getCurrencyInfoButton.addEventListener('click', () => {
+                getCurrencyInfo(currencySymbolsInput.value.trim(), convertCurrencySelect.value);
+            });
+            
+            currencySymbolsInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    getCurrencyInfo(currencySymbolsInput.value.trim(), convertCurrencySelect.value);
+                }
+            });
         });
     </script>
 </body>

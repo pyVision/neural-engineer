@@ -476,7 +476,86 @@ async def get_crypto_detail(symbol: str, exchange: CryptoExchange = Depends(get_
         ticker = exchange.exchange.fetch_ticker(symbol)
         
         # Get more detailed data if available
-        order_book = exchange.get_order_book(symbol, limit=5)
+        order_book = exchange.get_order_book(symbol, limit=20)
+        
+        # Enhance the order book with additional statistics and explanations
+        order_book_stats = {}
+        
+        if order_book:
+            # Get existing statistics from order book
+            order_book_stats = {
+                "bids": order_book.get("bids", []),
+                "asks": order_book.get("asks", []),
+                "datetime": order_book.get("datetime"),
+                "timestamp": order_book.get("timestamp")
+            }
+            
+            # Add top bid/ask values with explanations
+            if order_book.get("top_bid"):
+                order_book_stats["top_bid"] = {
+                    "value": order_book.get("top_bid"),
+                    "explanation": "The highest price that buyers are currently willing to pay for this cryptocurrency"
+                }
+            
+            if order_book.get("top_ask"):
+                order_book_stats["top_ask"] = {
+                    "value": order_book.get("top_ask"),
+                    "explanation": "The lowest price that sellers are currently willing to accept for this cryptocurrency"
+                }
+            
+            # Add average bid/ask prices with explanations
+            if order_book.get("average_bid") is not None:
+                order_book_stats["average_bid"] = {
+                    "value": order_book.get("average_bid"),
+                    "explanation": "The arithmetic mean of all bid prices in the order book, representing the average buyer price intention"
+                }
+            
+            if order_book.get("average_ask") is not None:
+                order_book_stats["average_ask"] = {
+                    "value": order_book.get("average_ask"),
+                    "explanation": "The arithmetic mean of all ask prices in the order book, representing the average seller price intention"
+                }
+            
+            # Add spread calculation with explanation
+            if order_book.get("spread") is not None:
+                spread = order_book.get("spread")
+                spread_percentage = (spread / order_book.get("top_bid")[0]) * 100 if order_book.get("top_bid") else None
+                
+                order_book_stats["spread"] = {
+                    "value": spread,
+                    "percentage": spread_percentage,
+                    "explanation": "The difference between the best ask price and the best bid price. A smaller spread typically indicates higher liquidity and trading activity."
+                }
+            
+            # Add weighted average values with explanations
+            if order_book.get("weighted_bid") is not None:
+                order_book_stats["weighted_bid"] = {
+                    "value": order_book.get("weighted_bid"),
+                    "explanation": "The volume-weighted average price (VWAP) of all bids, giving more importance to price levels with higher order volumes"
+                }
+            
+            if order_book.get("weighted_ask") is not None:
+                order_book_stats["weighted_ask"] = {
+                    "value": order_book.get("weighted_ask"),
+                    "explanation": "The volume-weighted average price (VWAP) of all asks, giving more importance to price levels with higher order volumes"
+                }
+            
+            # Add liquidity assessment
+            bid_volume = sum(bid[1] for bid in order_book.get("bids", [])) if order_book.get("bids") else 0
+            ask_volume = sum(ask[1] for ask in order_book.get("asks", [])) if order_book.get("asks") else 0
+            
+            order_book_stats["liquidity"] = {
+                "bid_volume": bid_volume,
+                "ask_volume": ask_volume,
+                "ratio": bid_volume / ask_volume if ask_volume > 0 else None,
+                "explanation": "The ratio between buy and sell order volumes indicates market sentiment. A ratio > 1 suggests stronger buying pressure, while a ratio < 1 suggests stronger selling pressure."
+            }
+            
+            # Add general descriptions for bids and asks
+            order_book_stats["descriptions"] = {
+                "bids": "Bids are buy orders placed by traders willing to purchase the cryptocurrency at specific prices. They are sorted in descending order with the highest bid (best price for sellers) at the top.",
+                "asks": "Asks are sell orders placed by traders willing to sell the cryptocurrency at specific prices. They are sorted in ascending order with the lowest ask (best price for buyers) at the top."
+            }
         
         return {
             "symbol": symbol,
@@ -487,6 +566,7 @@ async def get_crypto_detail(symbol: str, exchange: CryptoExchange = Depends(get_
             "low_24h": ticker.get('low', 0),
             "volume_24h": ticker.get('quoteVolume', 0),
             "order_book": order_book,
+            "order_book_stats": order_book_stats,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -521,6 +601,45 @@ async def get_markets(exchange: CryptoExchange = Depends(get_exchange)):
         print("error is ",traceback.format_exc())
         
         raise HTTPException(status_code=500, detail=f"Failed to fetch market data: {str(e)}")
+
+
+@app.get("/api/currency-info")
+async def get_currency_info(
+    exchange: CryptoExchange = Depends(get_exchange),
+    symbols: str = Query(None, description="Comma-separated list of currency symbols (e.g., BTC,ETH,ADA)"),
+    convert: str = Query("USD", description="Currency to convert values to (e.g., USD, EUR)")
+):
+    """Get detailed currency information from CoinMarketCap including market cap, supply, and price metrics"""
+    try:
+        if not symbols:
+            raise HTTPException(status_code=400, detail="Please provide at least one currency symbol")
+            
+        # Split comma-separated symbols into a list
+        symbol_list = [symbol.strip().upper() for symbol in symbols.split(",")]
+        
+        # Call the exchange function to get market data
+        market_data = exchange.get_market_volume_by_symbols(symbol_list, convert=convert)
+        
+        #print(market_data)
+        if not market_data:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No data available for the provided symbols: {symbols}"
+            )
+        
+        # Filter out None values (symbols that weren't found)
+        valid_data = {k: v for k, v in market_data.items() if v is not None}
+        
+        return {
+            "data": valid_data,
+            "convert": convert,
+            "count": len(valid_data),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to fetch currency information: {str(e)}")
 
 
 
