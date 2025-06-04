@@ -112,9 +112,9 @@ class Cache:
         """Set value in cache with optional TTL"""
         try:
             serialized_value = JsonSerializer.serialize(value)
-            ttl1=ttl or self.ttl
-            if ttl1:
-                await self.cache.set(key, serialized_value, ex=ttl1)
+            #ttl1=ttl or self.ttl
+            if ttl:
+                await self.cache.set(key, serialized_value, ex=ttl)
             else:
                 await self.cache.set(key, serialized_value)
         except Exception as e:

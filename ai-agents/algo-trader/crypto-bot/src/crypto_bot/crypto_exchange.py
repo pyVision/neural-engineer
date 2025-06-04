@@ -865,33 +865,60 @@ class CryptoExchange:
             traceback.print_exc()
             print(f"Error fetching top movers: {e}")
             return None
-
-# Example usage:
-if __name__ == "__main__":
-    # Initialize the exchange
-    exchange = CryptoExchange()
-    exchange.init_exchange("binance")  # No API keys means public data only
-    
-    # Get exchange info
-    info = exchange.get_exchange_info()
-    if info:
-        print(f"Connected to {info['name']} exchange with {info['total_markets']} markets")
-    
-    # Get ticker data
-    btc_ticker = exchange.get_tickers(['BTC/USDT'])
-    if btc_ticker:
-        price = btc_ticker['BTC/USDT']['pricing_information']['last']
-        print(f"Current BTC/USDT price: ${price}")
-    
-    # Get order book
-    order_book = exchange.get_order_book('BTC/USDT', limit=5)
-    if order_book:
-        print(f"BTC/USDT spread: ${order_book['spread']}")
         
-        print("\nTop 5 bids:")
-        for price, amount in order_book['bids']:
-            print(f"${price:.2f}: {amount:.6f} BTC (${price*amount:.2f})")
+    def calculate_market_metrics(self, symbols: List[str], convert: str = 'USD') -> Dict:
+        """
+        Calculate various advanced market-related metrics for the specified cryptocurrencies
+        
+        Args:
+            symbols (List[str]): List of cryptocurrency symbols
+            convert (str): Currency to convert values to (default: 'USD')
             
-        print("\nTop 5 asks:")
-        for price, amount in order_book['asks']:
-            print(f"${price:.2f}: {amount:.6f} BTC (${price*amount:.2f})")
+        Returns:
+            Dict: Dictionary containing additional market metrics for each symbol
+        """
+        # Get basic market data
+        market_data = self.get_market_volume_by_symbols(symbols, convert)
+        
+        if not market_data:
+            return {}
+            
+        # Filter out None values (failed requests)
+        valid_data = {k: v for k, v in market_data.items() if v is not None}
+        
+        if not valid_data:
+            return {}
+            
+        # Calculate total market cap of all valid cryptocurrencies to use for market dominance calculation
+        total_market_cap = sum(data['pricing']['market_cap'] for data in valid_data.values() if data['pricing'].get('market_cap'))
+        
+        # Calculate additional metrics for each cryptocurrency
+        result = {}
+        for symbol, data in valid_data.items():
+            pricing = data['pricing']
+            
+            # Calculate volume-to-market-cap ratio (higher values may indicate more trading activity relative to size)
+            volume_to_mc_ratio = None
+            if pricing.get('market_cap') and pricing.get('market_cap') > 0:
+                volume_to_mc_ratio = pricing.get('volume_24h', 0) / pricing.get('market_cap', 1)
+                
+            # Calculate market dominance (percentage of total market cap)
+            dominance = None
+            if pricing.get('market_cap') and total_market_cap > 0:
+                dominance = (pricing.get('market_cap', 0) / total_market_cap) * 100
+                
+            # Calculate circulating to max supply ratio
+            circulating_to_max_ratio = None
+            if data.get('max_supply') and data.get('max_supply') > 0:
+                circulating_to_max_ratio = (data.get('circulating_supply', 0) / data.get('max_supply', 1)) * 100
+                
+            # Store calculated metrics
+            result[symbol] = {
+                'volume_to_mc_ratio': volume_to_mc_ratio,
+                'market_dominance_percent': dominance if dominance != data.get('pricing', {}).get('market_cap_dominance') else None,
+                'circulating_to_max_ratio': circulating_to_max_ratio,
+                'fully_diluted_valuation': pricing.get('fully_diluted_market_cap')
+            }
+            
+        return result
+

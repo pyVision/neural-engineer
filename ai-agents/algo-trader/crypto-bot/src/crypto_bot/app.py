@@ -14,8 +14,9 @@ Features include:
 
 import os
 import sys
+import asyncio
 from typing import List, Optional
-from fastapi import FastAPI, Request, Query, HTTPException, Depends
+from fastapi import FastAPI, Request, Query, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -88,8 +89,8 @@ async def update_global_cache(crypto_data):
         }
         
         # Store data and metadata in Redis - our enhanced JsonSerializer will handle Pydantic models now
-        await data_controller.cache.set_in_cache(CACHE_DATA_KEY, crypto_data, ttl=CACHE_DURATION)
-        await data_controller.cache.set_in_cache(CACHE_METADATA_KEY, metadata, ttl=CACHE_DURATION)
+        await data_controller.cache.set_in_cache(CACHE_DATA_KEY, crypto_data)
+        await data_controller.cache.set_in_cache(CACHE_METADATA_KEY, metadata)
         
         print(f"Cache updated with {len(crypto_data)} cryptocurrencies at {metadata['last_updated']}")
     except Exception as e:
@@ -97,7 +98,7 @@ async def update_global_cache(crypto_data):
         traceback.print_exc()
         print(f"Error updating cache: {e}")
 
-async def get_cached_data():
+async def get_valid_cached_data():
     """Get cryptocurrency data from Redis cache if valid, otherwise return None"""
     try:
         if not await is_cache_valid():
@@ -108,7 +109,24 @@ async def get_cached_data():
         
         if crypto_data:
             metadata = await data_controller.cache.get_from_cache(CACHE_METADATA_KEY)
-            print(f"Using cached data from {metadata.get('last_updated', 'unknown time')}")
+            print(f"Using valid cached data from {metadata.get('last_updated', 'unknown time')}")
+            
+        return crypto_data
+    except Exception as e:
+        print(f"Error getting valid cached data: {e}")
+        return None
+
+async def get_cached_data_regardless_of_validity():
+    """Get cryptocurrency data from Redis cache even if it's expired"""
+    try:
+        data_controller = await get_data_controller()
+        crypto_data = await data_controller.cache.get_from_cache(CACHE_DATA_KEY)
+        
+        if crypto_data:
+            metadata = await data_controller.cache.get_from_cache(CACHE_METADATA_KEY)
+            cache_valid = await is_cache_valid()
+            status = "valid" if cache_valid else "expired"
+            print(f"Using {status} cached data from {metadata.get('last_updated', 'unknown time')}")
             
         return crypto_data
     except Exception as e:
@@ -335,7 +353,8 @@ async def get_top_movers(
     exchange: CryptoExchange = Depends(get_exchange),
     quote_currency: str = Query("USDT", description="Quote currency (e.g., USDT, BTC)"),
     limit: int = Query(10, ge=5, le=50, description="Number of top/bottom pairs to return"),
-    window: str = Query("1d", description="Time window (1m-59m, 1h-23h, 1d-7d)")
+    window: str = Query("1d", description="Time window (1m-59m, 1h-23h, 1d-7d)"),
+    background_tasks: BackgroundTasks = None
 ):
     """Get top gainers and losers based on percentage change within a specified time window"""
     try:
@@ -349,6 +368,7 @@ async def get_top_movers(
             sort_desc=True,
             search=None,
             force_refresh=False,
+            background_tasks=background_tasks
         )
 
         losers = await get_cryptos(
@@ -360,6 +380,7 @@ async def get_top_movers(
             sort_desc=False,
             search=None,
             force_refresh=False,
+            background_tasks=None  # Only need to schedule refresh once
         )
 
         top_volume = await get_cryptos(
@@ -371,6 +392,7 @@ async def get_top_movers(
             sort_desc=True,
             search=None,
             force_refresh=False,
+            background_tasks=None  # Only need to schedule refresh once
         )
         
         if not gainers:
@@ -399,68 +421,88 @@ async def get_cryptos(
     sort_by: str = Query("market_cap", description="Field to sort by"),
     sort_desc: bool = Query(True, description="Sort in descending order"),
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
-    force_refresh: bool = Query(False, description="Force refresh cache")
+    force_refresh: bool = Query(False, description="Force refresh cache"),
+    background_tasks: BackgroundTasks = None
 ):
     """
     Get a paginated list of cryptocurrencies with market data
     """
     try:
-        # Check if we can use cached data
-        if not force_refresh:
-            cached_data = await get_cached_data()
-            print(f"Cached data found: {cached_data is not None}")
-            if cached_data:
+        # First, check for any cached data, even if expired
+        cached_data = await get_cached_data_regardless_of_validity()
+        cache_valid = await is_cache_valid()
+        
+        # If we're forcing a refresh or we don't have any data in cache
+        if force_refresh or cached_data is None:
+            print("Fetching fresh cryptocurrency data immediately...")
+            # Fetch all tickers from the exchange
+            all_tickers = exchange.get_tickers()
+            
+            # Process and filter data
+            crypto_data = []
+            
+            quote_symbols = exchange.get_quote_symbols(all_tickers)
+            market_data = exchange.get_market_volume_by_symbols(quote_symbols, convert='USD')
+
+            for symbol, ticker in all_tickers.items():
+                # Extract base symbol (cryptocurrency name)
+                base_symbol = symbol.split('/')[0]
+                
+                # Get quote currency from symbol
+                symbol_quote = symbol.split('/')[1] if '/' in symbol else 'UNKNOWN'
+                
+                # Sometimes market cap might not be available from all exchanges
+                market_cap = exchange.get_market_volume(base_symbol, market_data=market_data)
+                    
+                last = ticker.get("pricing_information").get('last', 0)
+                if not last:
+                    last = 0
+                if last == 0:
+                    continue 
+                    
+                entry = CryptoListing(
+                    symbol=symbol,
+                    name=base_symbol,
+                    price=float(last),
+                    percentage_change=float(ticker.get("change").get('percentage', 0) or 0),
+                    volume_24h=float(ticker.get("volume").get('quote_volume', 0) or 0),
+                    market_cap=market_cap
+                )
+                crypto_data.append(entry.dict())
+                
+            # Update the global cache
+            await update_global_cache(crypto_data)
+            
+            # Process and return the data
+            return process_cached_data(
+                crypto_data, page, page_size, quote_currency, 
+                sort_by, sort_desc, search
+            )
+        
+        else:
+            print(f"Using cached data (valid: {cache_valid})")
+            
+            # If cache is valid, simply return it
+            if cache_valid:
                 return process_cached_data(
                     cached_data, page, page_size, quote_currency, 
                     sort_by, sort_desc, search
                 )
-        
-        print("Fetching fresh cryptocurrency data...")
-        
-        # Fetch all tickers from the exchange
-        all_tickers = exchange.get_tickers()
-        
-        # Process and filter data
-        crypto_data = []
-        
-        quote_symbols = exchange.get_quote_symbols(all_tickers)
-        market_data = exchange.get_market_volume_by_symbols(quote_symbols, convert='USD')
-
-        for symbol, ticker in all_tickers.items():
-            # Extract base symbol (cryptocurrency name)
-            base_symbol = symbol.split('/')[0]
             
-            # Get quote currency from symbol
-            symbol_quote = symbol.split('/')[1] if '/' in symbol else 'UNKNOWN'
+            # If cache is expired, trigger an async refresh and return the stale data
+            if background_tasks:
+                print("Scheduling background cache update...")
+                background_tasks.add_task(update_cache_in_background, exchange)
+            else:
+                # If no background_tasks available, start a non-awaited task
+                print("Starting cache update task...")
+                asyncio.create_task(update_cache_in_background(exchange))
             
-            # Sometimes market cap might not be available from all exchanges
-            market_cap = exchange.get_market_volume(base_symbol, market_data=market_data)
-                
-            #print(f"Processing symbol: {symbol}, ", ticker.get('pricing_information').get('last', 0))
-            last = ticker.get("pricing_information").get('last', 0)
-            if not last:
-                last = 0
-            if last == 0:
-                continue 
-                
-            entry = CryptoListing(
-                symbol=symbol,
-                name=base_symbol,
-                price=float(last),
-                percentage_change=float(ticker.get("change").get('percentage', 0) or 0),
-                volume_24h=float(ticker.get("volume").get('quote_volume', 0) or 0),
-                market_cap=market_cap
+            # Return the stale cached data while the refresh happens in the background
+            return process_cached_data(
+                cached_data, page, page_size, quote_currency, 
+                sort_by, sort_desc, search
             )
-            crypto_data.append(entry.dict())
-            
-        # Update the global cache
-        await update_global_cache(crypto_data)
-        
-        # Process and return the data
-        return process_cached_data(
-            crypto_data, page, page_size, quote_currency, 
-            sort_by, sort_desc, search
-        )
         
     except Exception as e:
         import traceback
@@ -620,7 +662,6 @@ async def get_currency_info(
         # Call the exchange function to get market data
         market_data = exchange.get_market_volume_by_symbols(symbol_list, convert=convert)
         
-        #print(market_data)
         if not market_data:
             raise HTTPException(
                 status_code=404, 
@@ -629,6 +670,14 @@ async def get_currency_info(
         
         # Filter out None values (symbols that weren't found)
         valid_data = {k: v for k, v in market_data.items() if v is not None}
+        
+        # Get additional market metrics
+        additional_metrics = exchange.calculate_market_metrics(symbol_list, convert=convert)
+        
+        # Add additional metrics to the response data
+        for symbol, metrics in additional_metrics.items():
+            if symbol in valid_data:
+                valid_data[symbol]['additional_metrics'] = metrics
         
         return {
             "data": valid_data,
@@ -642,7 +691,54 @@ async def get_currency_info(
         raise HTTPException(status_code=500, detail=f"Failed to fetch currency information: {str(e)}")
 
 
+async def update_cache_in_background(exchange: CryptoExchange):
+    """Update the cryptocurrency data cache in the background"""
+    print("Starting background cache update...")
+    try:
+        # Fetch all tickers from the exchange
+        all_tickers = exchange.get_tickers()
+        
+        # Process and filter data
+        crypto_data = []
+        
+        quote_symbols = exchange.get_quote_symbols(all_tickers)
+        market_data = exchange.get_market_volume_by_symbols(quote_symbols, convert='USD')
 
+        for symbol, ticker in all_tickers.items():
+            # Extract base symbol (cryptocurrency name)
+            base_symbol = symbol.split('/')[0]
+            
+            # Get quote currency from symbol
+            symbol_quote = symbol.split('/')[1] if '/' in symbol else 'UNKNOWN'
+            
+            # Sometimes market cap might not be available from all exchanges
+            market_cap = exchange.get_market_volume(base_symbol, market_data=market_data)
+                
+            last = ticker.get("pricing_information").get('last', 0)
+            if not last:
+                last = 0
+            if last == 0:
+                continue 
+                
+            entry = CryptoListing(
+                symbol=symbol,
+                name=base_symbol,
+                price=float(last),
+                percentage_change=float(ticker.get("change").get('percentage', 0) or 0),
+                volume_24h=float(ticker.get("volume").get('quote_volume', 0) or 0),
+                market_cap=market_cap
+            )
+            crypto_data.append(entry.dict())
+            
+        # Update the global cache
+        await update_global_cache(crypto_data)
+        print("Background cache update completed successfully")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error in background cache update: {e}")
+
+# Function defined earlier in the file
 
 def run():
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

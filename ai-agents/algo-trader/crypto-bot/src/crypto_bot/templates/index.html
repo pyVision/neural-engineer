@@ -195,19 +195,21 @@
                     </div>
                     <div class="card-body">
                         <ul class="nav nav-tabs" id="topMoversTab" role="tablist">
+                            <!-- Trading Data tab hidden
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="trading-data-tab" data-bs-toggle="tab" data-bs-target="#trading-data" type="button" role="tab" aria-controls="trading-data" aria-selected="true">Trading Data</button>
+                                <button class="nav-link" id="trading-data-tab" data-bs-toggle="tab" data-bs-target="#trading-data" type="button" role="tab" aria-controls="trading-data" aria-selected="false">Trading Data</button>
+                            </li>
+                            -->
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="symbol-search-tab" data-bs-toggle="tab" data-bs-target="#symbol-search" type="button" role="tab" aria-controls="symbol-search" aria-selected="true">Symbol Search</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="symbol-search-tab" data-bs-toggle="tab" data-bs-target="#symbol-search" type="button" role="tab" aria-controls="symbol-search" aria-selected="false">Symbol Search</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="currency-info-tab" data-bs-toggle="tab" data-bs-target="#currency-info" type="button" role="tab" aria-controls="currency-info" aria-selected="false">Currency Info</button>
+                                <button class="nav-link" id="currency-info-tab" data-bs-toggle="tab" data-bs-target="#currency-info" type="button" role="tab" aria-controls="currency-info" aria-selected="false">Market Info</button>
                             </li>
                         </ul>
                         <div class="tab-content mt-3" id="topMoversTabContent">
-                            <!-- Trading Data Tab -->
-                            <div class="tab-pane fade show active" id="trading-data" role="tabpanel" aria-labelledby="trading-data-tab">
+                            <!-- Trading Data Tab - Now Hidden -->
+                            <div class="tab-pane fade" id="trading-data" role="tabpanel" aria-labelledby="trading-data-tab" style="display: none;">
                                 <div class="alert alert-light border mb-4">
                                     <h5 class="alert-heading mb-2">Market Overview</h5>
                                     <p class="mb-1">This dashboard displays key trading data to help identify market trends and opportunities:</p>
@@ -334,14 +336,14 @@
                                 </div>
                             </div>
                             <!-- Symbol Search Tab -->
-                            <div class="tab-pane fade" id="symbol-search" role="tabpanel" aria-labelledby="symbol-search-tab">
+                            <div class="tab-pane fade show active" id="symbol-search" role="tabpanel" aria-labelledby="symbol-search-tab">
                                 <div class="row mb-3">
                                     <div class="col-md-6 mx-auto">
                                         <div class="input-group">
-                                            <input type="text" id="symbolSearchInput" class="form-control" placeholder="Enter cryptocurrency symbol (e.g., BTC/USDT)" aria-label="Search for a cryptocurrency">
+                                            <input type="text" id="symbolSearchInput" class="form-control" placeholder="Enter cryptocurrency symbol (e.g., BTCUSDT)" aria-label="Search for a cryptocurrency">
                                             <button class="btn btn-primary" type="button" id="symbolSearchButton">Search</button>
                                         </div>
-                                        <div class="form-text mt-1">Enter the full trading pair like BTC/USDT, ETH/BTC, etc.</div>
+                                        <div class="form-text mt-1">Enter the full trading pair like BTCUSDT, ETHBTC, etc.</div>
                                     </div>
                                 </div>
                                 <div id="symbolSearchResults" class="mt-3">
@@ -1839,7 +1841,10 @@
                                 <div class="col-12">
                                     <div class="alert alert-info p-2">
                                         <h6 class="mb-1">About This Data</h6>
-                                        <p class="mb-0 small">This table displays key metrics for the requested cryptocurrencies. Hover over column headers for more information about each metric.</p>
+                                        <p class="mb-0 small">This table displays key metrics for the requested cryptocurrencies. Hover over column headers for more information about each metric. Click on any row to expand and see detailed metrics and analysis.</p>
+                                        <hr class="my-2">
+                                        <p class="mb-0 small"><strong>Data Source:</strong> All cryptocurrency data is sourced from CoinMarketCap's API and includes market capitalization, trading volume, price changes, and supply information. For each cryptocurrency, we provide standard market metrics plus additional calculated metrics to help with deeper analysis.</p>
+                                        <p class="mb-0 small mt-1"><strong>Market Cap</strong> (Price × Circulating Supply) is the total market value of a cryptocurrency's circulating supply. <strong>Volume</strong> indicates trading activity across exchanges over the last 24 hours. <strong>% Change</strong> shows price movement over different timeframes.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1928,6 +1933,9 @@
                                             <div class="card-header">Basic Information</div>
                                             <div class="card-body">
                                                 <div class="text-muted small mb-3">Core identifying details about this cryptocurrency.</div>
+                                                <div class="alert alert-light border-left p-2 mb-3">
+                                                    <p class="small mb-0"><strong>What is this section?</strong> This section provides essential identification information about the cryptocurrency, including standardized names and ranking data used by exchanges, wallets, and data providers.</p>
+                                                </div>
                                                 <table class="table table-sm">
                                                     <tbody>
                                                         <tr>
@@ -1935,24 +1943,54 @@
                                                             <td><strong>${currencyData.name}</strong></td>
                                                         </tr>
                                                         <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">The full, official name of the cryptocurrency as listed across exchanges and in official documentation.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>Symbol:</td>
                                                             <td><strong>${currencyData.symbol}</strong></td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="URL-friendly version of the cryptocurrency name">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">The market ticker symbol used to identify this cryptocurrency on exchanges (similar to stock tickers like AAPL for Apple).</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>Slug:</td>
                                                             <td>${currencyData.slug || 'N/A'}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Unique identifier in the CoinMarketCap database">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">URL-friendly version of the cryptocurrency name used in web addresses and API calls.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>ID:</td>
                                                             <td>${currencyData.id || 'N/A'}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Position in market capitalization rankings">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">Unique numerical identifier in the CoinMarketCap database that remains constant even if name or symbol changes.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>CMC Rank:</td>
                                                             <td>#${currencyData.cmc_rank || 'N/A'}</td>
                                                         </tr>
                                                         <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">Position in global market capitalization rankings - lower numbers indicate larger market capitalization.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>Last Updated:</td>
                                                             <td>${new Date(currencyData.last_updated).toLocaleString()}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">The most recent time this cryptocurrency's data was updated in the CoinMarketCap database.</small>
+                                                            </td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -1966,19 +2004,37 @@
                                                     Supply metrics indicate how many coins or tokens exist and their distribution status. 
                                                     These figures impact scarcity, potential inflation, and overall value.
                                                 </div>
+                                                <div class="alert alert-light border-left p-2 mb-3">
+                                                    <p class="small mb-0"><strong>Why Supply Matters:</strong> Supply metrics are critical factors in cryptocurrency valuation. Limited supply (like Bitcoin's 21 million max) can create scarcity value, while unlimited supply can lead to inflation concerns. The ratio between circulating and max supply can indicate potential future dilution.</p>
+                                                </div>
                                                 <table class="table table-sm">
                                                     <tbody>
-                                                        <tr data-bs-toggle="tooltip" title="The number of coins that are publicly available and circulating in the market">
+                                                        <tr>
                                                             <td>Circulating Supply:</td>
                                                             <td>${formatNumber(currencyData.circulating_supply || 0, 0)} ${currencyData.symbol}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="All coins that currently exist, including those locked, reserved, or not yet released into circulation">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">The number of coins that are publicly available and actively trading in the market. Used in market cap calculations (Price × Circulating Supply = Market Cap).</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>Total Supply:</td>
                                                             <td>${formatNumber(currencyData.total_supply || 0, 0)} ${currencyData.symbol}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="The maximum number of coins that will ever be created. Some cryptocurrencies like Bitcoin have a fixed cap, while others may not have a limit">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">All coins that currently exist, including those locked in smart contracts, reserved by the team, or not yet released into public circulation. Always greater than or equal to circulating supply.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>Max Supply:</td>
                                                             <td>${currencyData.max_supply ? formatNumber(currencyData.max_supply, 0) + ' ' + currencyData.symbol : 'No limit'}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0">
+                                                                <small class="text-muted">The maximum number of coins that will ever exist according to the protocol design. For Bitcoin, this is 21 million. Some cryptocurrencies have no upper limit ('No limit').</small>
+                                                            </td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -1994,29 +2050,104 @@
                                                 <div class="text-muted small mb-3">
                                                     Current market metrics showing the asset's valuation and trading activity.
                                                 </div>
+                                                <div class="alert alert-light border-left p-2 mb-3">
+                                                    <p class="small mb-0"><strong>Understanding Market Data:</strong> These metrics help gauge the cryptocurrency's market size, liquidity, and relative importance in the broader crypto market. Price alone doesn't tell the full story - market cap and trading volume provide context for the asset's overall value and trading activity.</p>
+                                                </div>
                                                 <h3>${formatCurrency(pricing.price || 0, data.convert)}</h3>
-                                                <div class="mt-3">
-                                                    <div class="mb-2">
-                                                        <span data-bs-toggle="tooltip" title="Total value of all circulating coins (Price × Circulating Supply)">Market Cap:</span> 
+                                                <p class="text-muted"><small>Current market price aggregated from multiple exchanges</small></p>
+                                                <div class="mt-4">
+                                                    <div class="mb-1">
+                                                        <span>Market Cap:</span> 
                                                         <span class="fw-medium">${formatLargeNumber(pricing.market_cap || 0)}</span>
                                                     </div>
-                                                    <div class="mb-2">
-                                                        <span data-bs-toggle="tooltip" title="Theoretical market cap if maximum supply was in circulation (Price × Max Supply)">Fully Diluted Market Cap:</span> 
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Total value of all circulating coins (Price × Circulating Supply). This is the standard measure of a cryptocurrency's total value and size in the market.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Fully Diluted Market Cap:</span> 
                                                         <span class="fw-medium">${formatLargeNumber(pricing.fully_diluted_market_cap || 0)}</span>
                                                     </div>
-                                                    <div class="mb-2">
-                                                        <span data-bs-toggle="tooltip" title="Percentage of total crypto market capitalization this coin represents">Market Cap Dominance:</span> 
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Theoretical market cap if maximum supply was in circulation (Price × Max Supply). Helps assess potential future valuation if all coins were released.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Market Cap Dominance:</span> 
                                                         <span class="fw-medium">${formatNumber(pricing.market_cap_dominance || 0, 2)}%</span>
                                                     </div>
-                                                    <div class="mb-2">
-                                                        <span data-bs-toggle="tooltip" title="Total trading volume across all markets in the last 24 hours">Volume (24h):</span> 
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Percentage of total crypto market capitalization this coin represents. Higher percentages indicate more significant market influence (Bitcoin typically has the highest).</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Volume (24h):</span> 
                                                         <span class="fw-medium">${formatLargeNumber(pricing.volume_24h || 0)}</span>
                                                     </div>
-                                                    <div>
-                                                        <span data-bs-toggle="tooltip" title="Percentage change in trading volume over the last 24 hours">Volume Change (24h):</span> 
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Total trading volume across all markets in the last 24 hours. Higher volume generally indicates more liquidity and trading interest.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Volume Change (24h):</span> 
                                                         <span class="fw-medium">${formatChangeWithClass(pricing.volume_change_24h)}</span>
                                                     </div>
+                                                    <div>
+                                                        <small class="text-muted">Percentage change in trading volume over the last 24 hours. Sudden increases may indicate growing interest or major news events.</small>
+                                                    </div>
                                                 </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- New Additional Metrics Card -->
+                                        <div class="card mb-3">
+                                            <div class="card-header">Additional Market Metrics</div>
+                                            <div class="card-body">
+                                                <div class="text-muted small mb-3">
+                                                    Advanced metrics for deeper market analysis beyond standard indicators.
+                                                </div>
+                                                <div class="alert alert-light border-left p-2 mb-3">
+                                                    <p class="small mb-0"><strong>Why These Metrics Matter:</strong> These advanced metrics provide deeper insights into a cryptocurrency's market behavior and potential future value. They can help identify undervalued assets, potential dilution risks, and relative trading activity compared to the asset's size.</p>
+                                                </div>
+                                                ${currencyData.additional_metrics ? `
+                                                <div>
+                                                    <div class="mb-1">
+                                                        <span>Volume/Market Cap Ratio:</span>
+                                                        <span class="fw-medium">${formatNumber(currencyData.additional_metrics.volume_to_mc_ratio || 0, 4)} <small class="text-muted">(Industry avg: 0.02-0.05)</small></span>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Ratio of 24h trading volume to market cap. Higher values (>0.1) often indicate high trading activity relative to market size, which could signal higher liquidity or increased speculative interest.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Market Cap Dominance:</span>
+                                                        <span class="fw-medium">${formatNumber(pricing.market_cap_dominance || 0, 2)}%</span>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Percentage of total cryptocurrency market capitalization this coin represents. Bitcoin typically ranges from 40-60%, while most altcoins have less than 1%.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Circulating/Max Supply Ratio:</span>
+                                                        <span class="fw-medium">${currencyData.additional_metrics.circulating_to_max_ratio ? formatNumber(currencyData.additional_metrics.circulating_to_max_ratio, 2) + '%' : 'N/A'}</span>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Percentage of maximum supply currently in circulation. Lower values (under 50%) may indicate significant potential future dilution as more coins are released, which could impact price.</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-1">
+                                                        <span>Fully Diluted Valuation:</span>
+                                                        <span class="fw-medium">${formatLargeNumber(currencyData.additional_metrics.fully_diluted_valuation || pricing.fully_diluted_market_cap || 0)}</span>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <small class="text-muted">Theoretical market cap if the maximum supply was in circulation (Price × Max Supply). A large difference between current market cap and fully diluted valuation may indicate higher future supply inflation.</small>
+                                                    </div>
+                                                </div>
+                                                ` : `
+                                                <div class="text-center py-3">
+                                                    No additional metrics available
+                                                </div>
+                                                `}
                                             </div>
                                         </div>
                                         
@@ -2028,7 +2159,10 @@
                                                     <span class="positive">Green</span> indicates price appreciation, 
                                                     <span class="negative">red</span> indicates decline.
                                                 </div>
-                                                <table class="table table-hover mb-0">
+                                                <div class="alert alert-light border-left p-2 mb-3">
+                                                    <p class="small mb-0"><strong>Reading Price Changes:</strong> Analyzing multiple timeframes provides a comprehensive view of an asset's performance. Short-term changes (1h, 24h) reflect immediate market sentiment, while longer timeframes (30d, 90d) reveal sustained trends and potential market cycles. Contradictions between timeframes can signal potential trend reversals.</p>
+                                                </div>
+                                                <table class="table table-hover">
                                                     <thead>
                                                         <tr>
                                                             <th>Time Period</th>
@@ -2036,30 +2170,64 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr data-bs-toggle="tooltip" title="Very short-term price movement, often reflects immediate market reactions">
+                                                        <tr>
                                                             <td>1 Hour</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_1h)}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Short-term trend showing daily market sentiment">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Very short-term price movement reflecting immediate market reactions to news, tweets, or trading patterns. Highly volatile and often noise rather than signal.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>24 Hours</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_24h)}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Medium-term trend showing weekly market direction">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Short-term trend showing daily market sentiment. Often used by day traders to gauge momentum. Changes of >5% in 24h indicate significant volatility.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>7 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_7d)}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Monthly trend indicating stronger market patterns">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Medium-term trend showing weekly market direction. More reliable than 24h for identifying short-term trends while filtering out daily noise.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>30 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_30d)}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Sustained medium-term price movement">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Monthly trend indicating stronger market patterns. Often used to identify mid-term bull/bear cycles and standard for measuring monthly performance.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>60 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_60d)}</td>
                                                         </tr>
-                                                        <tr data-bs-toggle="tooltip" title="Long-term price trend, useful for identifying major market cycles">
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Sustained medium-term price movement covering approximately 2 months. Helps smooth out short-term volatility to reveal clearer trends.</small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
                                                             <td>90 Days</td>
                                                             <td>${formatChangeWithClass(pricing.percent_change_90d)}</td>
                                                         </tr>
+                                                        <tr>
+                                                            <td colspan="2" class="pb-3 pt-0 border-top-0">
+                                                                <small class="text-muted">Long-term price trend covering a quarter, useful for identifying major market cycles and longer-term investment performance. Often used by institutions when evaluating crypto assets.</small>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -2115,9 +2283,9 @@
 
         // Initialize the dashboard
         document.addEventListener('DOMContentLoaded', () => {
-            loadQuoteCurrencies();
+            //loadQuoteCurrencies();
             //updateTimePeriodDisplay(); // Update the time period display on page load
-            loadTopMovers(); // Make sure this loads on page initialization
+            //loadTopMovers(); // Make sure this loads on page initialization
             
             // Initialize tooltips
             initTooltips();
