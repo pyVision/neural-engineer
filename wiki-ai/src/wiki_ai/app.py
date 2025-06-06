@@ -1,5 +1,5 @@
 """
-DeepWiki Clone - A repository exploration tool built with FastAPI
+WIKI-ai  - A repository exploration tool built with FastAPI
 """
 
 import os
@@ -33,7 +33,7 @@ if current_dir not in sys.path:
 
 # Initialize FastAPI application
 app = FastAPI(
-    title="DeepWiki Clone",
+    title="Wiki-ai",
     description="A repository exploration tool built with FastAPI",
     version="1.0.0"
 )
