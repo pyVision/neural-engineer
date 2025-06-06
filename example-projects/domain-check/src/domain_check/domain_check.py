@@ -107,19 +107,19 @@ def is_valid_domain(domain: str) -> bool:
         return False
 
 
-@enhanced_cached(    
-    ttl=86400,  # 24 hours (60*60*24)
-    cache=Cache.REDIS,
-    track_stats=True,
-    key_builder=custom_key_builder,
-    serializer=JsonSerializer(),
-    namespace=initialization_result["env_vars"]["REDIS_NAMESPACE"],
-    endpoint=initialization_result["env_vars"]["REDIS_HOST"],
-    port=initialization_result["env_vars"]["REDIS_PORT"],
-    password=initialization_result["env_vars"]["REDIS_PASSWORD"],
-    db=initialization_result["env_vars"]["REDIS_DB"],
-    pool_max_size=2                 
-                 )
+# @enhanced_cached(    
+#     ttl=86400,  # 24 hours (60*60*24)
+#     cache=Cache.REDIS,
+#     track_stats=True,
+#     key_builder=custom_key_builder,
+#     serializer=JsonSerializer(),
+#     namespace=initialization_result["env_vars"]["REDIS_NAMESPACE"],
+#     endpoint=initialization_result["env_vars"]["REDIS_HOST"],
+#     port=initialization_result["env_vars"]["REDIS_PORT"],
+#     password=initialization_result["env_vars"]["REDIS_PASSWORD"],
+#     db=initialization_result["env_vars"]["REDIS_DB"],
+#     pool_max_size=2                 
+#                  )
 async def check_domain_expiry(domain: str) -> WhoisEntry:
     """
     Check the expiry date and other WHOIS information for a given domain.
@@ -235,14 +235,14 @@ async def check_domain_expiry(domain: str) -> WhoisEntry:
                 
                 def _preprocess(self, attr: str, value: str) -> Union[str, datetime]:
                     value = value.strip()
-                    print("preprocess",attr,value)
+                    
                     if value and isinstance(value, str) and not value.isdigit() and "_date" in attr:
                         # try casting to date format
                         formatted_value = value
                         # if data_preprocessor is set, use it to preprocess the data string
                         if isinstance(value, datetime):
                             formatted_value=value.strftime("%Y-%m-%d %H:%M:%S")
-                            print("formatted_dates2",formatted_value, attr)
+                            
                             setattr(w, date_attr, formatted_value)
 
                         return formatted_value
@@ -252,55 +252,56 @@ async def check_domain_expiry(domain: str) -> WhoisEntry:
         w = WhoisEntry.load(domain, text)
 
         # Some TLDs may need special parsing
+        
         if w.expiration_date is None:
             from whois.parser import WhoisCom,WhoisZa
             class WhoisEntry_new(WhoisEntry):
                     @staticmethod
-                    def load(domain, text):
-                        #print("AAAAA calling load",text)
-                        return WhoisZa(domain, text)
-                    
-                    
-                    # def _preprocess(self, attr: str, value: str) -> Union[str, datetime]:
-                    #     value = value.strip()
-                    #     print("preprocess",attr,value)
-                    #     if value and isinstance(value, str) and not value.isdigit() and "_date" in attr:
-                    #         # try casting to date format
-                    #         formatted_value = value
-                    #         # if data_preprocessor is set, use it to preprocess the data string
-                    #         if isinstance(value, datetime):
-                    #             formatted_value=value.strftime("%Y-%m-%d %H:%M:%S")
-                    #             print("formatted_dates1",formatted_value, attr)
-                    #             setattr(w, date_attr, formatted_value)
-
-                    #         return formatted_value
+                    def load(domain, text1):
                         
-                    #     return value
+                        return WhoisZa(domain, text1)
+                    
+
                     
             w1=WhoisEntry_new.load(domain, text)
             setattr(w, 'expiration_date', w1.expiration_date)
             setattr(w, 'updated_date', w1.updated_date)
             setattr(w, 'creation_date', w1.creation_date)
+
             
             w.expiration_date = w1.expiration_date
             
+
+        
             # Format date attributes if they exist and are datetime objects
         for date_attr in ['expiration_date', 'updated_date', 'creation_date']:
                 if hasattr(w, date_attr) and getattr(w, date_attr):
                     date_value = getattr(w, date_attr)
-                    if isinstance(date_value, datetime):
-                        print("formatted_dates", date_value.strftime("%Y-%m-%d %H:%M:%S"), date_attr)
-                        setattr(w, date_attr, date_value.strftime("%Y-%m-%d %H:%M:%S"))
-        #print("AAAAA",w)
+                    if date_value:
+                        # Handle both single datetime and lists of datetimes
+                        if isinstance(date_value, list):
+                            formatted_dates = []
+                            for dt in date_value:
+                                if isinstance(dt, datetime):
+                                    formatted_dates.append(dt.strftime("%Y-%m-%d %H:%M:%S"))
+                                else:
+                                    formatted_dates.append(str(dt))
+                            setattr(w, date_attr, formatted_dates)
+                        elif isinstance(date_value, datetime):
+                            formatted_date = date_value.strftime("%Y-%m-%d %H:%M:%S")
+                            setattr(w, date_attr, formatted_date)
+                           
 
+
+        setattr(w, "text", "")
+        # Serialize the WhoisEntry object to JSON
         import json
-        def handler(e):
-            if isinstance(e, datetime):
-                return "AA",e
-            return str(e)
+        def json_serializer(obj):
+                if hasattr(obj, '__dict__'):
+                    return obj.__dict__
+                return str(obj)
 
-        rstr=json.dumps(w, indent=2, default=handler, ensure_ascii=False)
-    
+        rstr = json.dumps(w.__dict__, default=json_serializer, indent=2, ensure_ascii=False)
         return rstr
     except Exception as e:
         import traceback
@@ -361,22 +362,21 @@ async def check_domains(domains_list: List[str], notification_threshold_days: in
                 wstr = await check_domain_expiry(domain)
                 import json
                 w=json.loads(wstr)
-                print("JSON",w)
-                #print("FFFF",w)
+
                 # Process expiry date
                 domain_expiry = datetime.datetime.now()
                 if isinstance(w.get("expiration_date"), list):
                     domain_expiry = min(w["expiration_date"])
                 elif isinstance(w.get("expiration_date"), str):
                     try:
-                        #print("string",w["expiration_date"])
+                        
                         # Attempt to parse the string into a datetime object
                         domain_expiry = datetime.datetime.strptime(w.get("expiration_date"), "%Y-%m-%d %H:%M:%S")
                     except ValueError:
                         # If standard ISO format fails, try a more flexible parsing approach
                         domain_expiry = parser.parse(w.get("expiration_date"))
                 else:
-                    print("------ ekse -----")
+              
                     domain_expiry = w.get("expiration_date", datetime.datetime.now())
                 
                 # Calculate days until expiry
@@ -422,7 +422,7 @@ async def check_domains(domains_list: List[str], notification_threshold_days: in
             }
             rdict[domain]=edict
             results.append(edict)
-            pass
+            
     return results
 
 
