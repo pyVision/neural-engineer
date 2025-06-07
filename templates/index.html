@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Domain & SSL Expiry Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            padding: 8px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .alert {
+            color: red;
+        }
+        .ok {
+            color: green;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* Loading dialog styles */
+        .loading-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .loading-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.311);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .about-section {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .about-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .about-section ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .about-section li {
+            margin-bottom: 10px;
+        }
+        
+        .about-section strong {
+            color: #2c5282;
+        }
+
+
+
+        .tab-button {
+            background-color: rgba(255, 255, 255, 0.614);
+            color : black;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 16px;
+            flex: 1; /* Added - makes tabs equal width */
+            text-align: center; /* Added - centers text */
+            white-space: nowrap; /* Added - prevents text wrapping */
+        }
+
+        .tab-button:hover {
+            background-color: #4CAF50;
+        }
+
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 0 0 5px 5px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Notification form styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .notification-message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .notification-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .notification-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .domains-list {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .domain-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .domain-item:last-child {
+            border-bottom: none;
+        }
+        
+        .remove-domain {
+            color: #dc3545;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Domain & SSL Expiry Checker</h1>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-button {% if active_tab == 'domain' %}active{% endif %}" onclick="openTab(event, 'domain-tab')">Domain Expiry Checker</button>
+            <button class="tab-button {% if active_tab == 'ssl' %}active{% endif %}" onclick="openTab(event, 'ssl-tab')">SSL Certificate Checker</button>
+            <button class="tab-button {% if active_tab == 'notification' %}active{% endif %}" onclick="openTab(event, 'notification-tab')">Notification Settings</button>
+        </div>
+
+        <!-- Domain Expiry Tab -->
+        <div id="domain-tab" class="tab-content {% if active_tab == 'domain' %}active{% endif %}">
+            <form method="post" id="domainForm" action="/check-domains" onsubmit="return validateForm('domainsInput', 'errorMessage')">
+                <p>Enter domain names (one per line or comma separated, maximum 5 domains):</p>
+                <textarea name="domains" id="domainsInput" placeholder="example.com, example.org">{{ domains }}</textarea>
+                <div id="errorMessage" class="error-message">Maximum 5 domains allowed.</div>
+                <p>Notification threshold (days):</p>
+                <input type="number" name="threshold" value="{{ threshold }}" min="1" max="365">
+                <br><br>
+                <button type="submit">Check Domain Expiry</button>
+            </form>
+            
+            {% if results %}
+            <div class="results">
+                <h2>Domain Expiry Results</h2>
+                <table>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Expiry Date</th>
+                        <th>Days Left</th>
+                        <th>Registrar</th>
+                        <th>Owner</th>
+                        <th>Status</th>
+                    </tr>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.domain }}</td>
+                        <td>{{ result.expiry_date }}</td>
+                        <td>{{ result.days_left }}</td>
+                        <td>{{ result.registrar }}</td>
+                        <td>{{ result.owner }}</td>
+                        <td class="{% if result.status == 'Invalid domain' %}alert{% elif result.days_left < threshold %}alert{% else %}ok{% endif %}">
+                            {% if result.status == 'Invalid domain' %}
+                                Invalid domain
+                            {% elif result.days_left < threshold %}
+                                Expiring soon!
+                            {% else %}
+                                OK
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- SSL Certificate Tab -->
+        <div id="ssl-tab" class="tab-content {% if active_tab == 'ssl' %}active{% endif %}">
+            <form method="post" id="sslForm" action="/check-ssl" onsubmit="return validateForm('sslDomainsInput', 'sslErrorMessage')">
+                <p>Enter domain names (one per line or comma separated, maximum 100 domains):</p>
+                <textarea name="domains" id="sslDomainsInput" placeholder="example.com, example.org">{{ domains }}</textarea>
+                <div id="sslErrorMessage" class="error-message">Maximum 100 domains allowed.</div>
+                <p>Notification threshold (days):</p>
+                <input type="number" name="threshold" value="{{ threshold }}" min="1" max="365">
+                <br><br>
+                <button type="submit">Check SSL Certificates</button>
+            </form>
+            
+            {% if ssl_results %}
+            <div class="results">
+                <h2>SSL Certificate Results</h2>
+                <table>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Hostname</th>
+                        <!-- <th>Certificate Issuer</th> -->
+                        <th>Expiry Date</th>
+                        <th>Days Left</th>
+                        <th>Status</th>
+                    </tr>
+                    {% for result in ssl_results %}
+                    <tr>
+                        <td>{{ result.domain }}</td>
+                        <td>{{ result.hostname }}</td>
+                        <!-- <td>{{ result.cert_issuer }}</td> -->
+                        <td>{{ result.not_after }}</td>
+                        <td>{{ result.days_to_expire }}</td>
+                        <td class="{% if result.status == 'Invalid domain' %}alert{% elif result.days_to_expire < threshold %}alert{% else %}ok{% endif %}">
+                            {{ result.status }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Notification Settings Tab -->
+        <div id="notification-tab" class="tab-content {% if active_tab == 'notification' %}active{% endif %}">
+            <h2>Domain Expiry Notifications</h2>
+            <p>Register to receive email notifications when your domains or SSL certificates are about to expire.</p>
+            
+            <div class="form-group">
+                <label for="notificationEmail">Email Address:</label>
+                <input type="email" id="notificationEmail" name="email" placeholder="your@email.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="notificationDomains">Domains (one per line or comma separated):</label>
+                <textarea id="notificationDomains" name="domains" placeholder="example.com, example.org"></textarea>
+            </div>
+            
+            <button type="button" onclick="registerDomains()">Register Domains for Notifications</button>
+            <button type="button" onclick="getDomains()">View My Registered Domains</button>
+            
+            <div id="notificationSuccess" class="notification-message success"></div>
+            <div id="notificationError" class="notification-message error"></div>
+            
+            <div id="registeredDomains" class="domains-list" style="display:none;">
+                <h3>Your Registered Domains</h3>
+                <div id="domainsList"></div>
+                <button type="button" onclick="unregisterAllDomains()" class="remove-domain">Unregister All Domains</button>
+            </div>
+        </div>
+
+        <div class="about-section">
+            <h2>About Domain & SSL Expiry Checker</h2>
+            <p>This tool helps you monitor and manage your domain names and SSL certificates. Key features include:</p>
+            <ul>
+                <li><strong>Domain Expiry Monitoring:</strong> Check when your domains will expire</li>
+                <li><strong>SSL Certificate Validation:</strong> Verify SSL certificates and their expiration dates</li>
+                <li><strong>Bulk Checking:</strong> Check multiple domains at once (up to 5 domains)</li>
+                <li><strong>Early Warnings:</strong> Configurable threshold for expiration alerts</li>
+                <li><strong>Email Notifications:</strong> Get alerts before your domains or certificates expire</li>
+            </ul>
+            <p>Enter your domains above to check their expiration status and ensure you never miss a renewal.</p>
+        </div>
+    </div>
+
+    <!-- Loading Dialog -->
+    <div id="loadingDialog" class="loading-dialog">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loadingMessage">Checking domain expiry dates...</p>
+        </div>
+    </div>
+    
+    <!-- OTP Verification Dialog -->
+    <div id="otpVerificationDialog" class="loading-dialog">
+        <div class="loading-content" style="background-color: white; width: 400px;">
+            <h3>Email Verification Required</h3>
+            <p>A verification code has been sent to your email address. Please enter it below to continue.</p>
+            <div id="otpTimestampInfo" class="form-group" style="font-size: 13px; color: #666; margin: 8px 0; padding: 8px; background-color: #f8f8f8; border-radius: 4px;">
+                <p id="otpSentTime">Sent: <span id="otpCreationTime"></span></p>
+                <p id="otpExpiryTime">Valid for: <span id="otpExpiresIn"></span></p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="otpInput" placeholder="Enter verification code" style="width: 100%; padding: 10px; margin: 10px 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <button onclick="cancelOTPVerification()" style="background-color: #dc3545;">Cancel</button>
+                <button onclick="resendOTP()" style="background-color: #4a6da7;">Resend Code</button>
+                <button onclick="verifyOTP()" style="background-color: #28a745;">Verify</button>
+            </div>
+            <p id="otpErrorMessage" style="color: red; display: none; margin-top: 10px;"></p>
+            <p id="otpResendMessage" style="color: #4a6da7; display: none; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store pending operation details
+        let pendingOperation = null;
+        let pendingEmail = null;
+        let pendingDomains = null;
+        let pendingOTP = null; // New variable to store the OTP
+        
+        // Function to store OTP in session storage
+        function storeOTP(email, operation, otp) {
+            const otpData = {
+                email: email,
+                operation: operation,
+                otp: otp,
+                timestamp: new Date().getTime()
+            };
+            
+            // Store in session storage - will be available until the tab is closed
+            sessionStorage.setItem('storedOTP_' + email, JSON.stringify(otpData));
+            console.log('OTP stored in session for:', email);
+        }
+        
+        // Function to get stored OTP if available
+        function getStoredOTP(email, operation) {
+            const storedData = sessionStorage.getItem('storedOTP_' + email);
+            if (!storedData) return null;
+            
+            try {
+                const otpData = JSON.parse(storedData);
+                
+                // Only return if it's for the same email
+                if (otpData.email === email) {
+                    return otpData;
+                }
+                return null;
+            } catch (e) {
+                console.error('Error parsing stored OTP:', e);
+                return null;
+            }
+        }
+        
+        function showLoading(type) {
+            const message = type === 'ssl' ? 'Checking SSL certificates...' : 'Checking domain expiry dates...';
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingDialog').style.display = 'block';
+        }
+        
+        function validateForm(inputId, errorMsgId) {
+            const domainsText = document.getElementById(inputId).value;
+            let domains = [];
+            
+            // Split by commas or newlines
+            if (domainsText.includes(',')) {
+                domains = domainsText.split(',').map(d => d.trim()).filter(d => d);
+            } else {
+                domains = domainsText.split('\n').map(d => d.trim()).filter(d => d);
+            }
+            
+            if (domains.length > 1000) {
+                document.getElementById(errorMsgId).style.display = 'block';
+                return false;
+            }
+            
+            document.getElementById(errorMsgId).style.display = 'none';
+            
+            // Determine which form is being submitted
+            const formType = inputId.includes('ssl') ? 'ssl' : 'domain';
+            showLoading(formType);
+            
+            return true;
+        }
+
+        function openTab(evt, tabName) {
+            // Hide all tab content
+            var tabcontent = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            
+            // Remove active class from all tab buttons
+            var tablinks = document.getElementsByClassName("tab-button");
+            for (var i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            
+            // Show the current tab and mark its button as active
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        // Notification API functions
+        // OTP related functions
+        function showOTPDialog() {
+            document.getElementById('otpErrorMessage').style.display = 'none';
+            document.getElementById('otpInput').value = '';
+            document.getElementById('otpVerificationDialog').style.display = 'block';
+            console.log("OTP dialog should be visible now");
+            
+            // Force the dialog to be visible
+            const dialog = document.getElementById('otpVerificationDialog');
+            dialog.style.display = 'block';
+            dialog.style.opacity = '1';
+            dialog.style.visibility = 'visible';
+        }
+        
+        function hideOTPDialog() {
+            document.getElementById('otpVerificationDialog').style.display = 'none';
+        }
+        
+        function cancelOTPVerification() {
+            hideOTPDialog();
+            pendingOperation = null;
+            pendingEmail = null;
+            pendingDomains = null;
+        }
+        
+        function resendOTP() {
+            // Request a new OTP code with force_new=true to bypass the existing code check
+            document.getElementById('otpResendMessage').style.display = 'none';
+            
+            if (pendingEmail && pendingOperation) {
+                requestOTP(pendingEmail, pendingOperation, true)
+                    .then(success => {
+                        if (success) {
+                            document.getElementById('otpResendMessage').textContent = "New verification code sent! Please check your email.";
+                            document.getElementById('otpResendMessage').style.display = 'block';
+                            document.getElementById('otpInput').value = '';
+                        }
+                    });
+            }
+        }
+        
+        function requestOTP(email, operation, forceNew = false) {
+            console.log("Requesting OTP for email:", email, "operation:", operation, "forceNew:", forceNew);
+            document.getElementById('loadingMessage').textContent = "Sending verification code...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            document.getElementById('otpResendMessage').style.display = 'none';
+            
+            return fetch('/api/otp/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    operation: operation,
+                    force_new: forceNew
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                
+                if (data.status === 'success' || data.status === 'warning' || data.status === 'info') {
+                    // Update the OTP dialog with creation time and expiry info
+                    if (data.created_at) {
+                        document.getElementById('otpCreationTime').textContent = data.created_at;
+                    }
+                    
+                    if (data.expires_in) {
+                        document.getElementById('otpExpiresIn').textContent = data.expires_in;
+                    }
+                    
+                    // Show the OTP dialog
+                    showOTPDialog();
+                    
+                    // If it's an existing code, show a message
+                    if (data.existing_code) {
+                        document.getElementById('otpResendMessage').textContent = "Using existing verification code. Click 'Resend Code' if you need a new one.";
+                        document.getElementById('otpResendMessage').style.display = 'block';
+                    }
+                    
+                    return true;
+                } else {
+                    showNotificationError(data.message || "Failed to send verification code");
+                    return false;
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+                return false;
+            });
+        }
+        
+        function verifyOTP() {
+            const otp = document.getElementById('otpInput').value.trim();
+            if (!otp) {
+                document.getElementById('otpErrorMessage').textContent = "Please enter the verification code";
+                document.getElementById('otpErrorMessage').style.display = 'block';
+                return;
+            }
+            
+            // Store the OTP for use with the actual operations
+            pendingOTP = otp;
+            
+            // Store OTP in session storage
+            storeOTP(pendingEmail, pendingOperation, otp);
+            
+            document.getElementById('loadingMessage').textContent = "Processing...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            hideOTPDialog();
+            
+            // Instead of verifying with a separate API call, directly proceed with the operation
+            // and pass the OTP along with the actual request
+            if (pendingOperation === 'register') {
+                performRegistration(pendingEmail, pendingDomains, pendingOTP);
+                performGetDomains(pendingEmail, pendingOTP);
+            } else if (pendingOperation === 'view') {
+                performGetDomains(pendingEmail, pendingOTP);
+            } else if (pendingOperation === 'unregister') {
+                performUnregistration(pendingEmail, pendingDomains, pendingOTP);
+            } else {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Unknown operation type");
+            }
+        }
+
+        
+        function registerDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            const domainsText = document.getElementById('notificationDomains').value;
+            let domains = [];
+            
+            // Split by commas or newlines
+            if (domainsText.includes(',')) {
+                domains = domainsText.split(',').map(d => d.trim()).filter(d => d);
+            } else {
+                domains = domainsText.split('\n').map(d => d.trim()).filter(d => d);
+            }
+            
+            if (!email) {
+                showNotificationError("Please enter a valid email address");
+                return;
+            }
+            
+            if (domains.length === 0) {
+                showNotificationError("Please enter at least one domain");
+                return;
+            }
+            
+            // Store details for pending operation
+            pendingOperation = 'register';
+            pendingEmail = email;
+            pendingDomains = domains;
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'register');
+            if (storedOTP) {
+                performRegistration(email, domains, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'register');
+            }
+        }
+        
+        function performRegistration(email, domains, otp) {
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Registering domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API with the OTP included
+            fetch('/api/notifications/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    domains: domains,
+                    otp: otp
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    document.getElementById('notificationDomains').value = '';
+                    // Clear pending values after successful operation
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingDomains = null;
+                    pendingOTP = null;
+                } else if (data.require_otp) {
+                    // If OTP verification failed, show the OTP dialog again
+                    showNotificationError(data.message);
+                    showOTPDialog();
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
+        
+        function getDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+            
+            // Store details for pending operation
+            pendingOperation = 'view';
+            pendingEmail = email;
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'view');
+            if (storedOTP) {
+                performGetDomains(email, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'view');
+            }
+        }
+            
+        function performGetDomains(email, otp) {
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Retrieving domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API with OTP as query parameter
+            fetch(`/api/notifications/${encodeURIComponent(email)}/domains?otp=${encodeURIComponent(otp)}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loadingDialog').style.display = 'none';
+                    
+                    if (data.domains && data.domains.length > 0) {
+                        displayDomains(data.domains, email);
+                        // Clear pending values after successful operation
+                        pendingOperation = null;
+                        pendingEmail = null;
+                        pendingOTP = null;
+                    } else if (data.require_otp) {
+                        // If OTP verification failed, show the OTP dialog again
+                        showNotificationError(data.message);
+                        showOTPDialog();
+                    } else {
+                        showNotificationError("No domains registered for this email address");
+                        document.getElementById('registeredDomains').style.display = 'none';
+                        // Clear pending values after successful operation
+                        pendingOperation = null;
+                        pendingEmail = null;
+                        pendingOTP = null;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loadingDialog').style.display = 'none';
+                    showNotificationError("Error: " + error.message);
+                });
+        }
+        
+        function performUnregistration(email, domains, otp) {
+            // Show loading state
+            document.getElementById('loadingMessage').textContent = "Unregistering domains...";
+            document.getElementById('loadingDialog').style.display = 'block';
+            
+            // Call the API with the OTP included
+            fetch('/api/notifications/unregister', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    domains: domains,
+                    otp: otp
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                if (data.status === 'success') {
+                    showNotificationSuccess(data.message);
+                    // Clear pending values after successful operation
+                    pendingOperation = null;
+                    pendingEmail = null;
+                    pendingDomains = null;
+                    pendingOTP = null;
+                    
+                    // If we were showing the registered domains, refresh the list
+                    if (document.getElementById('registeredDomains').style.display === 'block') {
+                        getDomains();
+                    }
+                } else if (data.require_otp) {
+                    // If OTP verification failed, show the OTP dialog again
+                    showNotificationError(data.message);
+                    showOTPDialog();
+                } else {
+                    showNotificationError(data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingDialog').style.display = 'none';
+                showNotificationError("Error: " + error.message);
+            });
+        }
+        
+        function unregisterDomain(email, domain) {
+            // Store details for pending operation
+            pendingOperation = 'unregister';
+            pendingEmail = email;
+            pendingDomains = [domain];
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'unregister');
+            if (storedOTP) {
+                performUnregistration(email, [domain], storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'unregister');
+            }
+        }
+        
+        function unregisterAllDomains() {
+            const email = document.getElementById('notificationEmail').value;
+            
+            if (!email) {
+                showNotificationError("Please enter your email address");
+                return;
+            }
+            
+            if (!confirm("Are you sure you want to unregister all domains? You will no longer receive notifications for any domain.")) {
+                return;
+            }
+            
+            // Store details for pending operation
+            pendingOperation = 'unregister';
+            pendingEmail = email;
+            pendingDomains = null; // Null indicates all domains
+            
+            // Check if OTP is already stored
+            const storedOTP = getStoredOTP(email, 'unregister');
+            if (storedOTP) {
+                performUnregistration(email, null, storedOTP.otp);
+            } else {
+                // Request OTP first
+                requestOTP(email, 'unregister');
+            }
+        }
+        
+        function displayDomains(domains, email) {
+            const domainsListElement = document.getElementById('domainsList');
+            domainsListElement.innerHTML = '';
+            
+            domains.forEach(domain => {
+                const domainItem = document.createElement('div');
+                domainItem.className = 'domain-item';
+                
+                const domainText = document.createElement('span');
+                domainText.textContent = domain;
+                
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-domain';
+                removeButton.textContent = 'Remove';
+                removeButton.onclick = function() { unregisterDomain(email, domain); };
+                
+                domainItem.appendChild(domainText);
+                domainItem.appendChild(removeButton);
+                domainsListElement.appendChild(domainItem);
+            });
+            
+            document.getElementById('registeredDomains').style.display = 'block';
+        }
+        
+        function showNotificationSuccess(message) {
+            const successElement = document.getElementById('notificationSuccess');
+            successElement.textContent = message;
+            successElement.style.display = 'block';
+            
+            document.getElementById('notificationError').style.display = 'none';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                successElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showNotificationError(message) {
+            const errorElement = document.getElementById('notificationError');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            document.getElementById('notificationSuccess').style.display = 'none';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        // Set initial active tab on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            {% if active_tab == 'ssl' %}
+            document.querySelector('.tab-button:nth-child(2)').classList.add('active');
+            document.getElementById('ssl-tab').classList.add('active');
+            {% elif active_tab == 'notification' %}
+            document.querySelector('.tab-button:nth-child(3)').classList.add('active');
+            document.getElementById('notification-tab').classList.add('active');
+            {% else %}
+            document.querySelector('.tab-button:first-child').classList.add('active');
+            document.getElementById('domain-tab').classList.add('active');
+            {% endif %}
+        });
+    </script>
+</body>
+</html>
