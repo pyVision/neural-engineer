@@ -1,5 +1,5 @@
 /**
- * Main JavaScript file for DeepWiki Clone
+ * Main JavaScript file for Wiki-ai 
  */
 
 document.addEventListener('DOMContentLoaded', function() {
